@@ -6,12 +6,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 /* ─── Icons ─────────────────────────────────────────────── */
-const HeartLogoIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-  </svg>
-);
-
 const UserIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
     <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
@@ -53,9 +47,28 @@ const FemaleIcon = () => (
   </svg>
 );
 
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3">
-    <path d="M20 6L9 17l-5-5" />
+const CheckCircleIcon = ({ valid }: { valid: boolean }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    className={`w-4 h-4 flex-shrink-0 ${valid ? 'text-green-500' : 'text-neutral-300'}`}>
+    <circle cx="12" cy="12" r="10" /><path d="M9 12l2 2 4-4" />
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-neutral-400">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
+const HeartAccentIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
   </svg>
 );
 
@@ -93,45 +106,24 @@ const HeartFeatureIcon = () => (
   </svg>
 );
 
-/* ─── Feature cards data ─────────────────────────────────── */
+/* ─── Feature cards (right overlay) ──────────────────────── */
 const features = [
-  {
-    icon: <ShieldIcon />,
-    iconBg: 'bg-blue-50 text-blue-600',
-    title: 'Safe & Secure',
-    desc: 'Your information is protected with top-level security',
-  },
-  {
-    icon: <PeopleIcon />,
-    iconBg: 'bg-orange-50 text-orange-500',
-    title: 'Genuine Connections',
-    desc: 'Connect with verified and serious individuals',
-  },
-  {
-    icon: <HeartFeatureIcon />,
-    iconBg: 'bg-rose-50 text-rose-500',
-    title: 'Meaningful Matches',
-    desc: 'AI-powered matches based on your preferences',
-  },
+  { icon: <ShieldIcon />, iconBg: 'bg-rose-50 text-rose-500', title: 'Safe & Secure', desc: 'Your information is protected with top-level security' },
+  { icon: <PeopleIcon />, iconBg: 'bg-rose-50 text-rose-500', title: 'Genuine Connections', desc: 'Connect with verified and serious individuals' },
+  { icon: <HeartFeatureIcon />, iconBg: 'bg-rose-50 text-rose-500', title: 'Meaningful Matches', desc: 'AI-powered matches based on your preferences' },
 ];
 
-/* ─── Password rule checker ──────────────────────────────── */
+/* ─── Password rules ─────────────────────────────────────── */
 const passwordRules = (pw: string) => [
   { label: 'At least 8 characters', valid: pw.length >= 8 },
-  { label: 'Includes number', valid: /\d/.test(pw) },
   { label: 'Includes special character', valid: /[^A-Za-z0-9]/.test(pw) },
+  { label: 'Includes number', valid: /\d/.test(pw) },
 ];
 
 /* ─── Main Component ─────────────────────────────────────── */
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    gender: 'Male',
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-  });
+  const [form, setForm] = useState({ gender: 'Male', fullName: '', email: '', phone: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -162,217 +154,195 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F8] flex flex-col">
+    <div className="min-h-screen bg-[#FCEEF1] flex items-center justify-center p-2 lg:p-3">
+      <div className="w-full max-w-4xl bg-white rounded-[1.25rem] shadow-[0_10px_60px_rgba(122,0,38,0.12)] overflow-hidden flex flex-col lg:flex-row">
 
-      {/* ── Top Nav Bar ── */}
-      <header className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#7A0026] flex items-center justify-center text-white">
-            <HeartLogoIcon />
+        {/* ══════════ LEFT: FORM ══════════ */}
+        <div className="w-full lg:w-1/2 p-4 lg:p-6 flex flex-col justify-center">
+          {/* Heading */}
+          <div className="mb-2.5">
+            <h1 className="text-lg lg:text-[22px] font-extrabold text-[#7A0026] inline-flex items-start gap-1">
+              Create Your Account
+              <span className="text-rose-400 mt-0.5"><HeartAccentIcon /></span>
+            </h1>
+            <p className="text-neutral-500 text-[11px] mt-0.5">Let&apos;s get started on your journey to meaningful connections.</p>
           </div>
-          <span className="text-lg font-bold text-neutral-900">VivaahAI</span>
-        </Link>
-        <div className="flex items-center gap-3 text-sm text-neutral-600">
-          <span className="hidden sm:block">Already have an account?</span>
-          <Link href="/login"
-            className="px-4 py-2 rounded-lg border border-[#7A0026] text-[#7A0026] font-semibold text-sm hover:bg-[#7A0026] hover:text-white transition-all">
-            Log In
-          </Link>
-        </div>
-      </header>
 
-      {/* ── Main Card ── */}
-      <div className="flex-1 flex items-center justify-center px-4 py-2">
-        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.10)] overflow-hidden flex flex-col lg:flex-row">
+          <form onSubmit={handleSubmit} className="space-y-2">
+            {/* Gender */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-0.5">I am a</label>
+              <div className="grid grid-cols-2 gap-3">
+                {(['Male', 'Female'] as const).map((g) => {
+                  const active = form.gender === g;
+                  return (
+                    <button key={g} type="button" onClick={() => setForm({ ...form, gender: g })}
+                      className={`flex items-center justify-center gap-2 py-1.5 rounded-xl border text-sm font-medium transition-all ${active
+                        ? 'border-[#7A0026] bg-[#7A0026]/5 text-[#7A0026]'
+                        : 'border-[#EDE7E9] text-neutral-600 hover:border-neutral-300'}`}>
+                      {g === 'Male' ? <MaleIcon /> : <FemaleIcon />} {g}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          {/* ── Left: Form Panel ── */}
-          <div className="w-full lg:w-[52%] px-7 md:px-8 py-3 flex flex-col justify-center">
-            <h1 className="text-lg md:text-xl font-bold text-[#7A0026] mb-0.5 text-center lg:text-left">Create Your Account</h1>
-            <p className="text-neutral-500 text-xs mb-2.5 text-center lg:text-left">Let&apos;s get started on your journey to meaningful connections.</p>
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-0.5">Full Name</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><UserIcon /></span>
+                <input type="text" value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  placeholder="Enter your full name"
+                  className={`w-full pl-10 pr-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.fullName ? 'border-red-400' : 'border-[#EDE7E9]'}`} />
+              </div>
+              {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-1.5">
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-0.5">Email Address</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><MailIcon /></span>
+                <input type="email" value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="Enter your email address"
+                  className={`w-full pl-10 pr-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.email ? 'border-red-400' : 'border-[#EDE7E9]'}`} />
+              </div>
+              {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+            </div>
 
-              {/* I am a — Gender toggle */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-0.5">I am a</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {(['Male', 'Female'] as const).map((g) => {
-                    const active = form.gender === g;
-                    return (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setForm({ ...form, gender: g })}
-                        className={`flex items-center justify-center gap-2 py-1.5 rounded-xl border text-sm font-medium transition-all ${active
-                          ? 'border-[#7A0026] bg-[#7A0026]/5 text-[#7A0026]'
-                          : 'border-[#EDE7E9] text-neutral-600 hover:border-neutral-300'}`}
-                      >
-                        {g === 'Male' ? <MaleIcon /> : <FemaleIcon />}
-                        {g}
-                      </button>
-                    );
-                  })}
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-0.5">Phone Number</label>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1.5 px-3 rounded-xl border border-[#EDE7E9] bg-[#FAF7F8] text-sm text-neutral-700 flex-shrink-0">
+                  <span className="text-base leading-none">🇮🇳</span>
+                  <span className="font-medium">+91</span>
+                  <ChevronDownIcon />
                 </div>
+                <input type="tel" value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  placeholder="Enter your phone number"
+                  className={`flex-1 px-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.phone ? 'border-red-400' : 'border-[#EDE7E9]'}`} />
+              </div>
+              {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-0.5">Password</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><LockIcon /></span>
+                <input type={showPassword ? 'text' : 'password'} value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Create a strong password"
+                  className={`w-full pl-10 pr-11 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.password ? 'border-red-400' : 'border-[#EDE7E9]'}`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors">
+                  <EyeIcon show={showPassword} />
+                </button>
               </div>
 
-              {/* Full Name */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-0.5">Full Name</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><UserIcon /></span>
-                  <input
-                    type="text"
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    placeholder="Enter your full name"
-                    className={`w-full pl-10 pr-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.fullName ? 'border-red-400 bg-red-50' : 'border-[#EDE7E9]'}`}
-                  />
-                </div>
-                {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-0.5">Email Address</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><MailIcon /></span>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="Enter your email address"
-                    className={`w-full pl-10 pr-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.email ? 'border-red-400 bg-red-50' : 'border-[#EDE7E9]'}`}
-                  />
-                </div>
-                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-0.5">Phone Number</label>
-                <div className="flex gap-2">
-                  <div className="flex items-center gap-1.5 px-3 rounded-xl border border-[#EDE7E9] bg-[#FAF7F8] text-sm text-neutral-700 flex-shrink-0">
-                    <span className="text-base leading-none">🇮🇳</span>
-                    <span className="font-medium">+91</span>
+              {/* Password rules — 2 column grid */}
+              <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
+                {rules.map((r) => (
+                  <div key={r.label} className="flex items-center gap-1.5">
+                    <CheckCircleIcon valid={r.valid} />
+                    <span className={`text-xs ${r.valid ? 'text-green-600' : 'text-neutral-500'}`}>{r.label}</span>
                   </div>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    placeholder="Enter your phone number"
-                    className={`flex-1 px-4 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.phone ? 'border-red-400 bg-red-50' : 'border-[#EDE7E9]'}`}
-                  />
-                </div>
-                {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                ))}
               </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-0.5">Password</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"><LockIcon /></span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Create a strong password"
-                    className={`w-full pl-10 pr-11 py-1.5 rounded-xl border text-sm bg-[#FAF7F8] transition-all outline-none focus:ring-2 focus:ring-[#7A0026]/20 focus:border-[#7A0026] ${errors.password ? 'border-red-400 bg-red-50' : 'border-[#EDE7E9]'}`}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors">
-                    <EyeIcon show={showPassword} />
-                  </button>
-                </div>
-
-                {/* Password rules checklist */}
-                <div className="mt-1.5 space-y-1">
-                  {rules.map((r) => (
-                    <div key={r.label} className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${r.valid ? 'bg-green-500 text-white' : 'bg-neutral-200 text-neutral-400'}`}>
-                        <CheckIcon />
-                      </span>
-                      <span className={`text-xs ${r.valid ? 'text-green-600' : 'text-neutral-500'}`}>{r.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
-              </div>
-
-              {/* Sign Up Button */}
-              <button type="submit" disabled={loading}
-                className="w-full py-2.5 bg-[#7A0026] hover:bg-[#A10035] text-white font-semibold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
-                {loading ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Creating account...
-                  </>
-                ) : 'Sign Up'}
-              </button>
-            </form>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-2">
-              <div className="flex-1 h-px bg-[#EDE7E9]" />
-              <span className="text-xs text-neutral-400 font-medium">or continue with</span>
-              <div className="flex-1 h-px bg-[#EDE7E9]" />
+              {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
             </div>
 
-            {/* Social Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button className="flex items-center justify-center gap-2 py-1.5 px-4 border border-[#EDE7E9] bg-white rounded-xl text-sm font-medium text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 transition-all">
-                <GoogleIcon /><span>Google</span>
-              </button>
-              <button className="flex items-center justify-center gap-2 py-1.5 px-4 border border-[#EDE7E9] bg-white rounded-xl text-sm font-medium text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 transition-all">
-                <FacebookIcon /><span>Facebook</span>
-              </button>
-            </div>
+            {/* Create Account button */}
+            <button type="submit" disabled={loading}
+              className="w-full py-2 bg-gradient-to-r from-[#7A0026] to-[#A10035] hover:opacity-95 text-white font-semibold rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+              {loading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating account...
+                </>
+              ) : (<>Create Account <ArrowRightIcon /></>)}
+            </button>
+          </form>
 
-            {/* Terms checkbox */}
-            <label className="flex items-start gap-2 mt-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-[#EDE7E9] accent-[#7A0026] flex-shrink-0"
-              />
-              <span className="text-xs text-neutral-500 leading-relaxed">
-                I agree to VivaahAI&apos;s{' '}
-                <Link href="/terms" className="text-[#7A0026] underline hover:text-[#A10035]">Terms of Service</Link>
-                {' '}and{' '}
-                <Link href="/privacy" className="text-[#7A0026] underline hover:text-[#A10035]">Privacy Policy</Link>
-              </span>
-            </label>
-            {errors.terms && <p className="mt-1 text-xs text-red-500">{errors.terms}</p>}
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-[#EDE7E9]" />
+            <span className="text-xs text-neutral-400">or continue with</span>
+            <div className="flex-1 h-px bg-[#EDE7E9]" />
           </div>
 
-          {/* ── Right: Image + Feature Cards ── */}
-          <div className="hidden lg:block lg:w-[48%] relative overflow-hidden">
-            <Image
-              src="/Images/sign.png"
-              alt="Couple"
-              fill
-              className="object-cover object-center"
-              priority
-            />
-            <div className="absolute bottom-0 left-0 right-0 p-5 space-y-2">
+          {/* Social */}
+          <div className="grid grid-cols-2 gap-3">
+            <button className="flex items-center justify-center gap-2 py-1.5 border border-[#EDE7E9] rounded-xl text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              <GoogleIcon /> Google
+            </button>
+            <button className="flex items-center justify-center gap-2 py-1.5 border border-[#EDE7E9] rounded-xl text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              <FacebookIcon /> Facebook
+            </button>
+          </div>
+
+          {/* Terms */}
+          <label className="flex items-start gap-2 mt-2 cursor-pointer select-none">
+            <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="w-4 h-4 mt-0.5 rounded border-[#EDE7E9] accent-[#7A0026] flex-shrink-0" />
+            <span className="text-xs text-neutral-500 leading-relaxed">
+              I agree to VivaahAI&apos;s{' '}
+              <Link href="/terms" className="text-[#7A0026] underline hover:text-[#A10035]">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" className="text-[#7A0026] underline hover:text-[#A10035]">Privacy Policy</Link>
+            </span>
+          </label>
+          {errors.terms && <p className="mt-1 text-xs text-red-500">{errors.terms}</p>}
+
+          {/* Login link */}
+          <p className="text-center text-sm text-neutral-600 mt-2">
+            Already have an account?{' '}
+            <Link href="/login" className="font-bold text-[#7A0026] hover:text-[#A10035] transition-colors">Log In</Link>
+          </p>
+        </div>
+
+        {/* ══════════ RIGHT: IMAGE ══════════ */}
+        <div className="hidden lg:block lg:w-1/2 p-3">
+          <div className="relative h-full w-full rounded-[1.4rem] overflow-hidden">
+            <Image src="/Images/sign.png" alt="Happy couple" fill priority className="object-cover object-center" />
+            {/* Soft top wash for the headline */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-transparent to-transparent" />
+
+            {/* Top headline */}
+            <div className="absolute top-0 left-0 right-0 p-6">
+              <p className="text-lg font-semibold text-neutral-700">Find more than a match.</p>
+              <p className="text-2xl font-extrabold text-neutral-800">
+                Find <span className="text-[#A10035]">your person.</span>
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="h-0.5 w-10 bg-[#A10035]/60 rounded-full" />
+                <span className="text-[#A10035]"><HeartAccentIcon /></span>
+              </div>
+            </div>
+
+            {/* Bottom feature cards */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2.5">
               {features.map((f) => (
-                <div key={f.title}
-                  className="bg-white/95 backdrop-blur-sm rounded-xl px-4 py-3 flex items-start gap-3 shadow-sm">
+                <div key={f.title} className="bg-white/95 backdrop-blur-sm rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${f.iconBg}`}>
                     {f.icon}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-neutral-800 leading-tight">{f.title}</p>
+                    <p className="text-sm font-bold text-neutral-800 leading-tight">{f.title}</p>
                     <p className="text-xs text-neutral-500 mt-0.5 leading-snug">{f.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>
