@@ -26,20 +26,23 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const data = conversations.map((c) => {
-      const other = c.userAId === userId ? c.userB : c.userA;
-      const last = c.messages[0];
-      return {
-        id: c.id,
-        userId: other.id,
-        name: other.fullName,
-        photo: other.profile?.photo ?? null,
-        isOnline: other.profile?.isOnline ?? false,
-        lastMsg: last?.text ?? '',
-        time: last?.createdAt ?? c.createdAt,
-        unread: 0,
-      };
-    });
+    const data = conversations
+      .map((c) => {
+        const other = c.userAId === userId ? c.userB : c.userA;
+        const last = c.messages[0];
+        return {
+          id:       c.id,
+          userId:   other.id,
+          name:     other.fullName,
+          photo:    other.profile?.photo ?? null,
+          isOnline: other.profile?.isOnline ?? false,
+          lastMsg:  last?.text ?? '',
+          time:     (last?.createdAt ?? c.createdAt).toISOString(),
+          unread:   0,
+        };
+      })
+      // Sort by latest message first
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
     return NextResponse.json({
       success: true,

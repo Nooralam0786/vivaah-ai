@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import StatsCards from '@/components/dashboard/StatsCards';
 import { AIRecommendedMatches } from '@/components/dashboard/MatchCard';
 import ProfileStrength from '@/components/dashboard/ProfileStrength';
@@ -7,10 +8,21 @@ import FamilyConnect from '@/components/dashboard/FamilyConnect';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRound } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const firstName = user?.fullName ? user.fullName.split(' ')[0] : 'there';
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    fetch('/api/dashboard/stats', { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setMatchCount(json.data.matches); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -22,7 +34,13 @@ export default function DashboardPage() {
             Welcome back, {firstName}! 👋
           </h1>
           <p className="text-sm text-neutral-500 mt-1">
-            You have <span className="font-semibold text-primary-700">12 new matches</span> today
+            {matchCount === null ? (
+              <span className="inline-block h-4 w-40 bg-neutral-200 rounded animate-pulse" />
+            ) : matchCount > 0 ? (
+              <>You have <span className="font-semibold text-primary-700">{matchCount} compatible matches</span></>
+            ) : (
+              'Complete your profile to start getting matches'
+            )}
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0 items-center">

@@ -1,135 +1,194 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, Heart, MessageSquare, Zap, MoreVertical } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, Heart, MessageSquare, Zap, TrendingUp } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
+
+interface Stats {
+  matches: number;
+  likesReceived: number;
+  messages: number;
+  profileStrength: number;
+}
+
+// Generates a simple upward-trending sparkline ending at `current`
+function trendData(current: number, points = 10): number[] {
+  if (current === 0) return Array(points).fill(0);
+  return Array.from({ length: points }, (_, i) => {
+    const base = Math.round((current * (i + 1)) / points);
+    const jitter = Math.round((Math.random() - 0.3) * (current * 0.15));
+    return Math.max(0, base + jitter);
+  });
+}
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
+  const max = Math.max(...data, 1);
   const w = 64;
   const h = 22;
-
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
+    const y = h - (v / max) * (h - 4) - 2;
     return `${x},${y}`;
   });
-
-  const polyPts = pts.map(p => p).join(' ');
-  const fillPts = `0,${h} ${polyPts} ${w},${h}`;
-
+  const safe = (id: string) => id.replace(/[^a-z0-9]/gi, '');
   return (
     <svg width={w} height={h} className="overflow-visible flex-shrink-0">
       <defs>
-        <linearGradient id={`sg${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        <linearGradient id={`sg-${safe(color)}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0"    />
         </linearGradient>
       </defs>
-      <polygon points={fillPts} fill={`url(#sg${color.replace(/[^a-z0-9]/gi, '')})`} />
-      <polyline points={polyPts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon
+        points={`0,${h} ${pts.join(' ')} ${w},${h}`}
+        fill={`url(#sg-${safe(color)})`}
+      />
+      <polyline
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-const stats = [
-  {
-    label: 'Profile Views',
-    value: 128,
-    changeText: '23% this week',
-    Icon: Eye,
-    iconBg: 'bg-purple-100',
-    iconColor: 'text-purple-500',
-    sparkColor: '#8b5cf6',
-    sparkData: [45, 52, 48, 62, 58, 72, 80, 92, 100, 110, 128] as number[],
-    isStrength: false,
-  },
-  {
-    label: 'New Matches',
-    value: 12,
-    changeText: '8% this week',
-    Icon: Heart,
-    iconBg: 'bg-rose-100',
-    iconColor: 'text-rose-500',
-    sparkColor: '#f43f5e',
-    sparkData: [3, 5, 4, 7, 6, 8, 7, 9, 10, 11, 12] as number[],
-    isStrength: false,
-  },
-  {
-    label: 'Messages',
-    value: 12,
-    changeText: '15% this week',
-    Icon: MessageSquare,
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-500',
-    sparkColor: '#3b82f6',
-    sparkData: [4, 6, 5, 8, 7, 9, 8, 10, 9, 11, 12] as number[],
-    isStrength: false,
-  },
-  {
-    label: 'Profile Strength',
-    value: '85%',
-    changeText: 'Excellent',
-    Icon: Zap,
-    iconBg: 'bg-amber-100',
-    iconColor: 'text-amber-500',
-    sparkColor: '#D4A017',
-    sparkData: [] as number[],
-    isStrength: true,
-  },
-];
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card animate-pulse">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-7 h-7 bg-neutral-200 rounded-lg" />
+        <div className="h-3 bg-neutral-200 rounded w-24 flex-1" />
+      </div>
+      <div className="h-6 bg-neutral-200 rounded w-12 mb-2" />
+      <div className="h-3 bg-neutral-100 rounded w-20" />
+    </div>
+  );
+}
 
 export default function StatsCards() {
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [stats, setStats]     = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuthFromStorage();
+    if (!auth) { setLoading(false); return; }
+
+    fetch('/api/dashboard/stats', {
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setStats(json.data); })
+      .catch(() => {/* show zeros */})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    );
+  }
+
+  const s = stats ?? { matches: 0, likesReceived: 0, messages: 0, profileStrength: 0 };
+
+  const cards = [
+    {
+      label:       'Profile Views',
+      value:       s.likesReceived,
+      change:      s.likesReceived > 0 ? `${s.likesReceived} people liked you` : 'No likes yet',
+      Icon:        Eye,
+      iconBg:      'bg-purple-100',
+      iconColor:   'text-purple-500',
+      sparkColor:  '#8b5cf6',
+      sparkData:   trendData(s.likesReceived),
+      isStrength:  false,
+    },
+    {
+      label:       'New Matches',
+      value:       s.matches,
+      change:      s.matches > 0 ? `${s.matches} compatible profiles` : 'Explore to get matches',
+      Icon:        Heart,
+      iconBg:      'bg-rose-100',
+      iconColor:   'text-rose-500',
+      sparkColor:  '#f43f5e',
+      sparkData:   trendData(s.matches),
+      isStrength:  false,
+    },
+    {
+      label:       'Messages',
+      value:       s.messages,
+      change:      s.messages > 0 ? `${s.messages} unread` : 'No messages yet',
+      Icon:        MessageSquare,
+      iconBg:      'bg-blue-100',
+      iconColor:   'text-blue-500',
+      sparkColor:  '#3b82f6',
+      sparkData:   trendData(s.messages),
+      isStrength:  false,
+    },
+    {
+      label:       'Profile Strength',
+      value:       `${s.profileStrength}%`,
+      change:      s.profileStrength >= 80 ? 'Excellent' : s.profileStrength >= 50 ? 'Good' : 'Needs work',
+      Icon:        Zap,
+      iconBg:      'bg-amber-100',
+      iconColor:   'text-amber-500',
+      sparkColor:  '#D4A017',
+      sparkData:   [],
+      isStrength:  true,
+      strengthVal: s.profileStrength,
+    },
+  ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {stats.map((stat) => {
-        const { Icon } = stat;
-        return (
-          <div key={stat.label}
-            className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200 relative">
+      {cards.map((card) => {
+        const { Icon } = card;
+        const changeColor =
+          card.isStrength
+            ? card.strengthVal! >= 80 ? 'text-green-500' : card.strengthVal! >= 50 ? 'text-amber-500' : 'text-red-400'
+            : 'text-green-500';
 
-            {/* Row 1: icon + label + three-dots */}
+        return (
+          <div
+            key={card.label}
+            className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200"
+          >
+            {/* Row 1: icon + label */}
             <div className="flex items-center gap-2 mb-2">
-              <div className={`w-7 h-7 ${stat.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                <Icon size={14} className={stat.iconColor} />
+              <div className={`w-7 h-7 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <Icon size={14} className={card.iconColor} />
               </div>
-              <span className="text-[11px] text-neutral-500 font-medium flex-1 leading-tight">{stat.label}</span>
-              <div className="relative flex-shrink-0">
-                <button
-                  onClick={() => setMenuOpen(menuOpen === stat.label ? null : stat.label)}
-                  className="w-5 h-5 flex items-center justify-center text-neutral-300 hover:text-neutral-500 transition-colors">
-                  <MoreVertical size={13} />
-                </button>
-                {menuOpen === stat.label && (
-                  <div className="absolute right-0 top-6 w-36 bg-white rounded-xl shadow-lg border border-vivaah-border py-1 z-10">
-                    <button className="w-full text-left px-3 py-1.5 text-xs text-neutral-600 hover:bg-vivaah-bg">View Details</button>
-                    <button className="w-full text-left px-3 py-1.5 text-xs text-neutral-600 hover:bg-vivaah-bg">Download Report</button>
-                  </div>
-                )}
-              </div>
+              <span className="text-[11px] text-neutral-500 font-medium leading-tight">{card.label}</span>
             </div>
 
-            {/* Row 2: Big value */}
-            <div className="text-xl font-bold text-neutral-900 leading-none mb-2">{stat.value}</div>
+            {/* Row 2: value */}
+            <div className="text-xl font-bold text-neutral-900 leading-none mb-2">{card.value}</div>
 
-            {/* Row 3: change + sparkline OR progress */}
-            {stat.isStrength ? (
+            {/* Row 3: change text + sparkline OR progress bar */}
+            {card.isStrength ? (
               <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-green-500">{stat.changeText}</span>
+                <span className={`text-[11px] font-semibold ${changeColor}`}>{card.change}</span>
                 <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full"
-                    style={{ width: '85%', background: 'linear-gradient(90deg, #D4A017 0%, #F5C347 100%)' }} />
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width:      `${card.strengthVal}%`,
+                      background: 'linear-gradient(90deg, #D4A017 0%, #F5C347 100%)',
+                    }}
+                  />
                 </div>
               </div>
             ) : (
               <div className="flex items-end justify-between gap-2">
-                <div className="text-[11px] text-green-500 font-medium">
-                  <span className="mr-0.5">▲</span>{stat.changeText}
-                </div>
-                <Sparkline data={stat.sparkData} color={stat.sparkColor} />
+                <span className={`text-[11px] font-medium ${changeColor} leading-tight`}>
+                  <TrendingUp size={10} className="inline mr-0.5" />
+                  {card.change}
+                </span>
+                <Sparkline data={card.sparkData} color={card.sparkColor} />
               </div>
             )}
           </div>

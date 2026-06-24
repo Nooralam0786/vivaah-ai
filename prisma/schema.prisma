@@ -1,5 +1,4 @@
 // VivaahAI — local development database (SQLite via Prisma)
-// See plan: docs/architecture decision is SQLite for zero-infra real persistence.
 // Swapping to Postgres later only requires changing `provider` + `DATABASE_URL`.
 
 generator client {
@@ -23,21 +22,26 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  profile       Profile?
-  preference    Preference?
-  subscriptions Subscription[]
+  profile         Profile?
+  preference      Preference?
+  subscriptions   Subscription[]
   contactMessages ContactMessage[]
 
-  likesGiven    Like[]    @relation("LikesGiven")
-  likesReceived Like[]    @relation("LikesReceived")
-  matchesA      Match[]   @relation("MatchUserA")
-  matchesB      Match[]   @relation("MatchUserB")
-  bookmarksMade     Bookmark[] @relation("BookmarkOwner")
-  bookmarksReceived Bookmark[] @relation("BookmarkTarget")
+  likesGiven     Like[]    @relation("LikesGiven")
+  likesReceived  Like[]    @relation("LikesReceived")
+  passesGiven    Pass[]    @relation("PassesGiven")
+  passesReceived Pass[]    @relation("PassesReceived")
+  matchesA       Match[]   @relation("MatchUserA")
+  matchesB       Match[]   @relation("MatchUserB")
+  bookmarksMade      Bookmark[] @relation("BookmarkOwner")
+  bookmarksReceived  Bookmark[] @relation("BookmarkTarget")
 
   conversationsA Conversation[] @relation("ConversationUserA")
   conversationsB Conversation[] @relation("ConversationUserB")
   messagesSent   Message[]      @relation("MessageSender")
+
+  viewsGiven    ProfileView[] @relation("ViewsGiven")
+  viewsReceived ProfileView[] @relation("ViewsReceived")
 }
 
 model OtpCode {
@@ -52,63 +56,85 @@ model OtpCode {
 }
 
 model Profile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String @id @default(cuid())
+  userId        String @unique
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  gender         String?
-  dob            String?
-  height         String?
-  religion       String?
-  caste          String?
-  motherTongue   String?
-  maritalStatus  String?
+  gender        String?
+  dob           String?
+  height        String?
+  religion      String?
+  caste         String?
+  motherTongue  String?
+  maritalStatus String?
 
-  qualification  String?
-  occupation     String?
-  company        String?
-  annualIncome   String?
+  qualification String?
+  occupation    String?
+  company       String?
+  annualIncome  String?
 
-  country        String?
-  state          String?
-  city           String?
+  country       String?
+  state         String?
+  city          String?
 
-  aboutMe        String?
-  interests      String  @default("[]") // JSON-encoded string[]
-  photo          String?
-  coverPhoto     String?
-  photos         String  @default("[]") // JSON-encoded string[] — up to 4 additional gallery photos
+  aboutMe       String?
+  interests     String   @default("[]") // JSON-encoded string[]
+  photo         String?
+  coverPhoto    String?
+  photos        String   @default("[]") // JSON-encoded string[] — up to 4 gallery photos
 
-  isVerified     Boolean @default(false)
-  isOnline       Boolean @default(false)
+  // Lifestyle fields for matching
+  smokingHabit   String? // never | occasionally | regularly
+  drinkingHabit  String? // never | occasionally | regularly
+  dietPreference String? // vegetarian | non-vegetarian | vegan | eggetarian
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isVerified   Boolean   @default(false)
+  isOnline     Boolean   @default(false)
+  lastActiveAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Preference {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ageMin          Int      @default(18)
-  ageMax          Int      @default(35)
-  religion        String   @default("Any Religion")
-  location        String?
-  education       String   @default("Any")
+  ageMin            Int    @default(18)
+  ageMax            Int    @default(35)
+  religion          String @default("Any Religion")
+  location          String?
+  education         String @default("Any")
+  castePreference   String?
+  maritalStatusPref String?
+  smokingPref       String?
+  drinkingPref      String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Like {
-  id           String   @id @default(cuid())
-  fromUserId   String
-  toUserId     String
-  createdAt    DateTime @default(now())
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime @default(now())
 
   fromUser User @relation("LikesGiven", fields: [fromUserId], references: [id], onDelete: Cascade)
   toUser   User @relation("LikesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+}
+
+model Pass {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("PassesGiven", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("PassesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
 
   @@unique([fromUserId, toUserId])
 }
@@ -172,6 +198,19 @@ model Subscription {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProfileView {
+  id        String   @id @default(cuid())
+  viewerId  String
+  profileId String
+  createdAt DateTime @default(now())
+
+  viewer  User @relation("ViewsGiven",    fields: [viewerId],  references: [id], onDelete: Cascade)
+  profile User @relation("ViewsReceived", fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([viewerId])
 }
 
 model ContactMessage {

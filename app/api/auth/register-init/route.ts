@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { fullName, phone, email, gender } = parsed.data;
+    const { fullName, phone, email } = parsed.data;
+    // Normalize gender to lowercase so matching filters work consistently
+    const gender = parsed.data.gender ? parsed.data.gender.toLowerCase() : parsed.data.gender;
 
     // Use placeholder email when user skips the optional field
     const resolvedEmail = email && email.trim() ? email.trim().toLowerCase() : `${phone}@pending.vivaah`;
@@ -53,7 +55,10 @@ export async function POST(req: NextRequest) {
       // Incomplete previous attempt — update and resend OTP
       user = await prisma.user.update({
         where: { phone },
-        data: { fullName, email: resolvedEmail, gender, onboardingStep: 'verify_otp', phoneVerified: false },
+        data: {
+          fullName, email: resolvedEmail, gender, onboardingStep: 'verify_otp', phoneVerified: false,
+          profile: { upsert: { create: { gender: gender ?? null }, update: { gender: gender ?? null } } },
+        },
       });
     } else {
       // Fresh registration
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest) {
           phoneVerified: false,
           onboardingStep: 'verify_otp',
           gender,
-          profile: { create: {} },
+          profile: { create: { gender: gender ?? null } },
         },
       });
     }

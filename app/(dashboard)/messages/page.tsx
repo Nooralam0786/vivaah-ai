@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Send, Phone, Video, ArrowLeft, Search, Plus } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Conversation {
   id: string;
@@ -21,128 +25,326 @@ interface ChatMessage {
   time: string;
 }
 
-export default function MessagesPage() {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatTime(iso: string): string {
+  if (!iso || iso === 'Just now') return 'Just now';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
+
+function msgTime(iso: string): string {
+  if (!iso || iso === 'Just now') return 'Just now';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function ConvSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-4 border-b border-vivaah-border animate-pulse">
+      <div className="w-11 h-11 rounded-full bg-neutral-200 flex-shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <div className="h-3 bg-neutral-200 rounded w-28" />
+        <div className="h-2.5 bg-neutral-100 rounded w-44" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Inner component (uses useSearchParams) ───────────────────────────────────
+
+function MessagesInner() {
+  const searchParams = useSearchParams();
+  const initUserId    = searchParams.get('userId');
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activeConvId, setActiveConvId]   = useState<string | null>(null);
+  const [pendingUser, setPendingUser]     = useState<{ userId: string; name: string; photo: string | null } | null>(null);
+  const [messages, setMessages]           = useState<Record<string, ChatMessage[]>>({});
+  const [text, setText]                   = useState('');
+  const [search, setSearch]               = useState('');
+  const [loadingConvs, setLoadingConvs]   = useState(true);
+  const [loadingMsgs, setLoadingMsgs]     = useState(false);
+  const [sending, setSending]             = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_error, setError]                = useState<string | null>(null);
+  const messagesEndRef  = useRef<HTMLDivElement>(null);
+  const textareaRef     = useRef<HTMLTextAreaElement>(null);
+  const pollRef         = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const auth = getAuthFromStorage();
 
-  useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      setError('Please log in to see your messages.');
-      return;
-    }
+  // ── Fetch conversation list ─────────────────────────────────────────────────
+  const fetchConversations = useCallback(async () => {
+    if (!auth) return;
+    try {
+      const res  = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+      const json = await res.json();
+      if (!json.success) return;
+      setConversations(json.data);
+      return json.data as Conversation[];
+    } catch { return []; }
+  }, [auth]);
 
-    fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${auth.accessToken}` } })
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json.success) throw new Error(json.error?.message || 'Failed to load conversations');
-        setConversations(json.data);
-        if (json.data.length > 0) setActiveChat(json.data[0].id);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load conversations'))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ── Fetch messages for a conversation ──────────────────────────────────────
+  const fetchMessages = useCallback(async (convId: string, silent = false) => {
+    if (!auth) return;
+    if (!silent) setLoadingMsgs(true);
+    try {
+      const res  = await fetch(`/api/chat/conversations/${convId}/messages`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+      const json = await res.json();
+      if (!json.success) return;
+      setMessages((prev) => ({ ...prev, [convId]: json.data }));
+    } finally {
+      if (!silent) setLoadingMsgs(false);
+    }
+  }, [auth]);
+
+  // ── Initial load ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!auth) { setError('Please log in.'); setLoadingConvs(false); return; }
+
+    fetchConversations().then((convs) => {
+      setLoadingConvs(false);
+      if (!convs || convs.length === 0) return;
+
+      if (initUserId) {
+        // Open conversation with specific user if initiated from a profile
+        const match = convs.find((c) => c.userId === initUserId);
+        if (match) { setActiveConvId(match.id); return; }
+      }
+      // Default: open first conversation
+      setActiveConvId(convs[0].id);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Handle ?userId= param — fetch their info if no existing conversation ───
   useEffect(() => {
-    if (!activeChat || !auth || messages[activeChat]) return;
+    if (!initUserId || !auth) return;
+    // Check after conversations loaded
+    if (loadingConvs) return;
+    const match = conversations.find((c) => c.userId === initUserId);
+    if (match) { setActiveConvId(match.id); return; }
 
-    fetch(`/api/chat/conversations/${activeChat}/messages`, { headers: { Authorization: `Bearer ${auth.accessToken}` } })
-      .then((res) => res.json())
+    // No conversation yet — fetch their profile to show "new chat" state
+    fetch(`/api/users/${initUserId}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((r) => r.json())
       .then((json) => {
-        if (!json.success) return;
-        setMessages((prev) => ({ ...prev, [activeChat]: json.data }));
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeChat]);
+        if (json.success) {
+          setPendingUser({ userId: initUserId, name: json.data.name, photo: json.data.photo });
+          setActiveConvId(null);
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initUserId, loadingConvs]);
 
-  const activeConv = conversations.find((c) => c.id === activeChat);
-  const chatMessages = activeChat ? (messages[activeChat] || []) : [];
+  // ── Load messages when conversation changes ────────────────────────────────
+  useEffect(() => {
+    if (!activeConvId) return;
+    setPendingUser(null);
+    if (!messages[activeConvId]) fetchMessages(activeConvId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvId]);
 
+  // ── Polling: refresh active conversation every 5s ──────────────────────────
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (!activeConvId) return;
+    pollRef.current = setInterval(() => fetchMessages(activeConvId, true), 5000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [activeConvId, fetchMessages]);
+
+  // ── Auto-scroll ────────────────────────────────────────────────────────────
+  const activeMessages = activeConvId ? (messages[activeConvId] ?? []) : [];
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+  }, [activeMessages.length]);
 
+  // ── Auto-resize textarea ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+  }, [text]);
+
+  // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = async () => {
-    if (!message.trim() || !activeChat || !activeConv || !auth) return;
-    const text = message;
-    setMessage('');
+    const trimmed = text.trim();
+    if (!trimmed || sending || !auth) return;
 
-    const optimistic: ChatMessage = { id: `local-${Date.now()}`, text, sender: 'me', time: 'Just now' };
-    setMessages((prev) => ({ ...prev, [activeChat]: [...(prev[activeChat] || []), optimistic] }));
+    // Determine target user
+    const activeConv = conversations.find((c) => c.id === activeConvId);
+    const toUserId   = activeConv?.userId ?? pendingUser?.userId;
+    if (!toUserId) return;
+
+    setText('');
+    setSending(true);
+
+    // Optimistic message
+    const optimisticId  = `local-${Date.now()}`;
+    const optimisticMsg: ChatMessage = { id: optimisticId, text: trimmed, sender: 'me', time: 'Just now' };
+
+    if (activeConvId) {
+      setMessages((prev) => ({ ...prev, [activeConvId]: [...(prev[activeConvId] ?? []), optimisticMsg] }));
+    } else {
+      // New conversation — temp key
+      setMessages((prev) => ({ ...prev, __pending__: [...(prev.__pending__ ?? []), optimisticMsg] }));
+    }
 
     try {
-      await fetch('/api/chat/messages', {
-        method: 'POST',
+      const res  = await fetch('/api/chat/messages', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
-        body: JSON.stringify({ content: text, toUserId: activeConv.userId }),
+        body:    JSON.stringify({ content: trimmed, toUserId }),
       });
+      const json = await res.json();
+
+      if (json.success) {
+        const newConvId = json.data.conversationId;
+
+        if (!activeConvId) {
+          // First message — conversation was just created
+          setActiveConvId(newConvId);
+          setPendingUser(null);
+          setMessages((prev) => {
+            const pending = prev.__pending__ ?? [];
+            // Replace optimistic with real message
+            const real: ChatMessage = { id: json.data.id, text: json.data.text, sender: 'me', time: json.data.time };
+            const updated = pending.filter((m) => m.id !== optimisticId).concat(real);
+            const { __pending__: _, ...rest } = prev;
+            return { ...rest, [newConvId]: updated };
+          });
+        } else {
+          // Replace optimistic with real message
+          setMessages((prev) => ({
+            ...prev,
+            [activeConvId]: (prev[activeConvId] ?? []).map((m) =>
+              m.id === optimisticId ? { id: json.data.id, text: json.data.text, sender: 'me', time: json.data.time } : m,
+            ),
+          }));
+        }
+
+        // Refresh conversation list so "last message" updates
+        fetchConversations();
+      }
     } catch {
-      // Optimistic message stays in the UI even if the network call fails.
+      // Optimistic message stays so user sees their text
+    } finally {
+      setSending(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto animate-fade-in">
-        <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
-        <p className="text-sm text-neutral-400">Loading your conversations…</p>
-      </div>
-    );
-  }
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
 
-  if (error) {
+  // Active conversation data
+  const activeConv    = conversations.find((c) => c.id === activeConvId);
+  const chatPartner   = activeConv ?? (pendingUser ? { ...pendingUser, isOnline: false, lastMsg: '', time: '', unread: 0, id: '' } : null);
+  const displayMessages = activeConvId ? activeMessages : (messages.__pending__ ?? []);
+  const filteredConvs   = conversations.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+
+  if (!auth) {
     return (
-      <div className="max-w-7xl mx-auto animate-fade-in">
-        <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
-        <div className="text-center py-16 text-neutral-400">
-          <p className="font-medium text-neutral-600">{error}</p>
-          {!auth && <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>}
-        </div>
+      <div className="max-w-7xl mx-auto text-center py-20 text-neutral-400">
+        <p className="font-medium text-neutral-600">Please log in to view messages.</p>
+        <a href="/login" className="mt-2 text-sm text-primary-700 font-semibold hover:underline inline-block">Go to login →</a>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto animate-fade-in">
-      <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
+    <div className="max-w-7xl mx-auto animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 120px)', minHeight: '540px' }}>
+      <h1 className="text-xl font-bold text-neutral-900 mb-4 flex-shrink-0">Messages</h1>
 
-      <div className="bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden flex" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
-        {/* Sidebar */}
-        <div className={`${activeChat ? 'hidden sm:flex' : 'flex'} w-full sm:w-72 lg:w-80 flex-col border-r border-vivaah-border flex-shrink-0`}>
-          <div className="p-4 border-b border-vivaah-border">
+      <div className="flex flex-1 bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden min-h-0">
+
+        {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+        <div className={`${activeConvId || pendingUser ? 'hidden sm:flex' : 'flex'} w-full sm:w-72 lg:w-80 flex-col border-r border-vivaah-border flex-shrink-0`}>
+
+          {/* Search */}
+          <div className="p-3 border-b border-vivaah-border">
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">🔍</span>
-              <input type="text" placeholder="Search conversations..."
-                className="w-full pl-9 pr-4 py-2 bg-vivaah-bg rounded-xl text-sm border border-vivaah-border outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search conversations…"
+                className="w-full pl-9 pr-4 py-2 bg-vivaah-bg rounded-xl text-xs border border-vivaah-border outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700"
+              />
             </div>
           </div>
+
+          {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {conversations.length === 0 && (
-              <p className="p-4 text-sm text-neutral-400">No conversations yet — like a profile to start chatting!</p>
+            {loadingConvs && Array.from({ length: 4 }).map((_, i) => <ConvSkeleton key={i} />)}
+
+            {!loadingConvs && filteredConvs.length === 0 && !pendingUser && (
+              <div className="p-6 text-center text-neutral-400">
+                <div className="text-3xl mb-2">💬</div>
+                <p className="text-sm font-medium text-neutral-500">No conversations yet</p>
+                <p className="text-xs mt-1">Go to a profile and click "Message"</p>
+              </div>
             )}
-            {conversations.map((conv) => (
-              <button key={conv.id} onClick={() => setActiveChat(conv.id)}
-                className={`w-full flex items-center gap-3 p-4 hover:bg-vivaah-bg transition-colors text-left border-b border-vivaah-border/50 ${activeChat === conv.id ? 'bg-primary-50 border-l-2 border-l-primary-700' : ''}`}>
+
+            {/* Pending new chat */}
+            {pendingUser && (
+              <button
+                onClick={() => { setActiveConvId(null); }}
+                className="w-full flex items-center gap-3 p-4 hover:bg-vivaah-bg transition-colors text-left border-b border-vivaah-border bg-primary-50 border-l-2 border-l-primary-700"
+              >
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-primary-100 flex-shrink-0 flex items-center justify-center text-xl">
+                  {pendingUser.photo ? <img src={pendingUser.photo} alt="" className="w-full h-full object-cover" /> : '👤'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-sm text-neutral-900 truncate block">{pendingUser.name}</span>
+                  <span className="text-xs text-primary-600">New conversation</span>
+                </div>
+              </button>
+            )}
+
+            {filteredConvs.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => { setActiveConvId(conv.id); setPendingUser(null); }}
+                className={`w-full flex items-center gap-3 p-4 hover:bg-vivaah-bg transition-colors text-left border-b border-vivaah-border/50 ${
+                  activeConvId === conv.id ? 'bg-primary-50 border-l-2 border-l-primary-700' : ''
+                }`}
+              >
                 <div className="relative flex-shrink-0">
-                  <div className="w-11 h-11 rounded-full overflow-hidden bg-primary-100">
-                    <img src={conv.photo ?? undefined} alt={conv.name} className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <div className="w-11 h-11 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center text-xl">
+                    {conv.photo
+                      ? <img src={conv.photo} alt={conv.name} className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                      : '👤'}
                   </div>
                   {conv.isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm text-neutral-900 truncate">{conv.name}</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`text-sm truncate ${conv.unread > 0 ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-800'}`}>
+                      {conv.name}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 flex-shrink-0">{formatTime(conv.time)}</span>
                   </div>
-                  <p className="text-xs text-neutral-500 truncate mt-0.5">{conv.lastMsg}</p>
+                  <p className={`text-xs truncate mt-0.5 ${conv.unread > 0 ? 'text-neutral-700 font-medium' : 'text-neutral-400'}`}>
+                    {conv.lastMsg || 'Start a conversation'}
+                  </p>
                 </div>
                 {conv.unread > 0 && (
                   <div className="w-5 h-5 bg-primary-700 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
@@ -154,84 +356,153 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Chat Window */}
-        {activeChat && activeConv ? (
+        {/* ── Chat Window ───────────────────────────────────────────────────── */}
+        {chatPartner ? (
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-vivaah-border flex items-center gap-3 bg-white">
-              <button onClick={() => setActiveChat(null)} className="sm:hidden p-1 text-neutral-400 hover:text-neutral-700">
-                ←
+
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-vivaah-border flex items-center gap-3 bg-white flex-shrink-0">
+              <button
+                onClick={() => { setActiveConvId(null); setPendingUser(null); }}
+                className="sm:hidden p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-vivaah-bg transition-colors"
+              >
+                <ArrowLeft size={18} />
               </button>
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100">
-                  <img src={activeConv.photo ?? undefined} alt={activeConv.name} className="w-full h-full object-cover" />
+
+              <a href={`/profile/${chatPartner.userId}`} className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center text-lg">
+                  {chatPartner.photo
+                    ? <img src={chatPartner.photo} alt={chatPartner.name} className="w-full h-full object-cover" />
+                    : '👤'}
                 </div>
-                {activeConv.isOnline && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />}
-              </div>
-              <div>
-                <p className="font-semibold text-neutral-900 text-sm">{activeConv.name}</p>
-                <p className={`text-xs ${activeConv.isOnline ? 'text-green-500' : 'text-neutral-400'}`}>
-                  {activeConv.isOnline ? 'Online now' : 'Offline'}
+                {chatPartner.isOnline && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />}
+              </a>
+
+              <div className="flex-1 min-w-0">
+                <a href={`/profile/${chatPartner.userId}`} className="font-semibold text-neutral-900 text-sm hover:text-primary-700 transition-colors">
+                  {chatPartner.name}
+                </a>
+                <p className={`text-xs ${chatPartner.isOnline ? 'text-green-500' : 'text-neutral-400'}`}>
+                  {chatPartner.isOnline ? '● Online now' : 'Offline'}
                 </p>
               </div>
-              <div className="ml-auto flex gap-2">
-                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors text-sm">
-                  📞
+
+              <div className="flex gap-1.5 ml-auto">
+                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
+                  <Phone size={15} />
                 </button>
-                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors text-sm">
-                  🎥
+                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
+                  <Video size={15} />
                 </button>
+                <a href={`/profile/${chatPartner.userId}`} className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
+                  <Plus size={15} />
+                </a>
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-vivaah-bg">
-              {chatMessages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.sender === 'me'
-                    ? 'bg-primary-gradient text-white rounded-tr-sm'
-                    : 'bg-white text-neutral-800 border border-vivaah-border rounded-tl-sm shadow-xs'}`}>
-                    {msg.text}
-                    <p className={`text-[10px] mt-1 ${msg.sender === 'me' ? 'text-white/60' : 'text-neutral-400'}`}>
-                      {typeof msg.time === 'string' && msg.time === 'Just now' ? msg.time : new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
+            {/* Messages area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-vivaah-bg min-h-0">
+              {loadingMsgs && (
+                <div className="text-center py-8 text-neutral-400">
+                  <div className="animate-spin w-5 h-5 border-2 border-primary-700/30 border-t-primary-700 rounded-full mx-auto mb-2" />
+                  <p className="text-xs">Loading messages…</p>
                 </div>
-              ))}
+              )}
+
+              {!loadingMsgs && displayMessages.length === 0 && (
+                <div className="text-center py-12 text-neutral-400">
+                  <div className="text-4xl mb-3">👋</div>
+                  <p className="font-medium text-neutral-600">Say hello to {chatPartner.name}!</p>
+                  <p className="text-xs mt-1">Be the first to send a message.</p>
+                </div>
+              )}
+
+              {displayMessages.map((msg, idx) => {
+                const prev = displayMessages[idx - 1];
+                const showAvatar = msg.sender === 'them' && (!prev || prev.sender !== 'them');
+                return (
+                  <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                    {/* Other person's avatar */}
+                    {msg.sender === 'them' && (
+                      <div className={`w-7 h-7 rounded-full overflow-hidden bg-primary-100 flex-shrink-0 flex items-center justify-center text-sm ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
+                        {chatPartner.photo
+                          ? <img src={chatPartner.photo} alt="" className="w-full h-full object-cover" />
+                          : '👤'}
+                      </div>
+                    )}
+                    <div className={`max-w-xs sm:max-w-sm lg:max-w-md xl:max-w-lg flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'}`}>
+                      <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                        msg.sender === 'me'
+                          ? 'bg-primary-gradient text-white rounded-tr-sm'
+                          : 'bg-white text-neutral-800 border border-vivaah-border rounded-tl-sm shadow-sm'
+                      }`}>
+                        {msg.text}
+                      </div>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 px-1">{msgTime(msg.time)}</p>
+                    </div>
+                  </div>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-vivaah-border bg-white">
+            <div className="px-4 py-3 border-t border-vivaah-border bg-white flex-shrink-0">
               <div className="flex gap-2 items-end">
-                <button className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-primary-700 transition-colors flex-shrink-0">
-                  📎
-                </button>
-                <div className="flex-1 relative">
-                  <textarea value={message} onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                    placeholder="Type a message..." rows={1}
-                    className="w-full px-4 py-2.5 bg-vivaah-bg border border-vivaah-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700 resize-none" />
+                <div className="flex-1 bg-vivaah-bg border border-vivaah-border rounded-2xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-primary-700/20 focus-within:border-primary-700 transition-all">
+                  <textarea
+                    ref={textareaRef}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder={`Message ${chatPartner.name}…`}
+                    rows={1}
+                    className="w-full bg-transparent text-sm text-neutral-800 outline-none resize-none placeholder:text-neutral-400 leading-relaxed"
+                    style={{ maxHeight: '120px' }}
+                  />
                 </div>
-                <button onClick={sendMessage} disabled={!message.trim()}
-                  className="w-9 h-9 bg-primary-gradient rounded-xl flex items-center justify-center text-white disabled:opacity-50 hover:opacity-90 transition-opacity flex-shrink-0">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 rotate-90">
-                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
+                <button
+                  onClick={sendMessage}
+                  disabled={!text.trim() || sending}
+                  className="w-10 h-10 bg-primary-gradient rounded-2xl flex items-center justify-center text-white disabled:opacity-40 hover:opacity-90 transition-opacity flex-shrink-0"
+                >
+                  {sending
+                    ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    : <Send size={16} />}
                 </button>
               </div>
+              <p className="text-[10px] text-neutral-400 mt-1.5 pl-1">Press Enter to send · Shift+Enter for new line</p>
             </div>
           </div>
         ) : (
+          /* Empty state — no conversation selected */
           <div className="flex-1 hidden sm:flex items-center justify-center text-center text-neutral-400">
             <div>
-              <div className="text-5xl mb-3">💬</div>
-              <p className="font-medium text-neutral-600">Select a conversation</p>
-              <p className="text-sm mt-1">Choose from your conversations to start messaging</p>
+              <div className="text-5xl mb-4">💬</div>
+              <p className="font-semibold text-neutral-700 text-base">Your Messages</p>
+              <p className="text-sm mt-1 max-w-xs">Select a conversation or go to a profile and click "Message" to start chatting.</p>
+              <a href="/discover" className="inline-block mt-4 px-5 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                Discover Profiles
+              </a>
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Page (wraps inner in Suspense for useSearchParams) ───────────────────────
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
+        <div className="bg-white rounded-2xl border border-vivaah-border shadow-card h-96 animate-pulse" />
+      </div>
+    }>
+      <MessagesInner />
+    </Suspense>
   );
 }
