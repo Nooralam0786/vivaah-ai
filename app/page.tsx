@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import SiteHeader from "@/components/site/SiteHeader";
+import SiteFooter from "@/components/site/SiteFooter";
+import SmartSignupLink from "@/components/site/SmartSignupLink";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,15 +30,6 @@ interface Testimonial {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-
-const NAV_LINKS = [
-  "About Us",
-  "How It Works",
-  "Premium",
-  "Safety",
-  "Success Stories",
-  "Blog",
-];
 
 const TRUST_BADGES: TrustBadge[] = [
   {
@@ -140,27 +133,6 @@ const TESTIMONIALS: Testimonial[] = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-      <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="17" stroke="#D4AF37" strokeWidth="1.5" />
-        <path
-          d="M11 15.5c0-1.933 1.567-3.5 3.5-3.5 1.08 0 2.046.491 2.7 1.263L18 14.4l.8-.637A3.496 3.496 0 0125 15.5c0 3.5-3.667 6.167-7 8.5-3.333-2.333-7-5-7-8.5z"
-          fill="#D4AF37"
-          opacity="0.85"
-        />
-        <path
-          d="M14.5 20c0-1.381 1.119-2.5 2.5-2.5.773 0 1.462.351 1.929.903L20 18.857l.571-.454A2.497 2.497 0 0125 20c0 2.5-2.619 4.405-5 6-2.381-1.667-5-3.5-5-6z"
-          fill="#6B1B3D"
-          opacity="0.7"
-        />
-      </svg>
-      <span className="text-xl font-bold text-primary-600">VivaahAI</span>
-    </Link>
-  );
-}
-
 function FeatureCard({ badge }: { badge: TrustBadge }) {
   return (
     <div className="group relative overflow-hidden bg-white rounded-2xl p-8 text-center border border-neutral-200 cursor-pointer transition-all duration-500 hover:-translate-y-2 hover:border-[#6B1B3D] hover:shadow-[0_12px_40px_rgba(107,27,61,0.18)]">
@@ -183,152 +155,86 @@ function FeatureCard({ badge }: { badge: TrustBadge }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   return (
     <main className="min-h-screen bg-white font-sans">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-neutral-100 shadow-xs">
-        <div className="container-safe flex items-center justify-between py-4">
-          <Logo />
-
-          <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link}
-                href={`/${link.toLowerCase().replace(/\s+/g, "-")}`}
-                className="text-sm text-neutral-700 hover:text-primary-600 font-medium transition-colors whitespace-nowrap"
-              >
-                {link}
-              </Link>
-            ))}
-          </div>
-
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-primary-600 border border-primary-600 hover:bg-primary-50 px-5 py-2 rounded-lg transition-colors"
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2 rounded-lg transition-colors"
-            >
-              Sign Up
-            </Link>
-          </div>
-
-          <button
-            className="md:hidden p-2 text-neutral-600"
-            aria-label="Toggle navigation menu"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden bg-white border-t border-neutral-100 px-4 pb-4">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link}
-                href={`/${link.toLowerCase().replace(/\s+/g, "-")}`}
-                className="block py-2 text-sm text-neutral-600 hover:text-primary-600"
-              >
-                {link}
-              </Link>
-            ))}
-            <div className="flex gap-3 mt-3">
-              <Link href="/login" className="flex-1 text-center text-sm font-semibold border border-primary-600 text-primary-600 py-2 rounded-lg">
-                Log In
-              </Link>
-              <Link href="/signup" className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 py-2 rounded-lg">
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        )}
-      </nav>
+      <SiteHeader />
 
       {/* Hero */}
-      <section className="relative overflow-visible pb-16" style={{ minHeight: "580px" }}>
-        <div className="absolute inset-0 overflow-hidden">
-          <Image
-            src="/Images/hero.png"
-            alt="VivaahAI couple"
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
+      <section className="relative overflow-visible pb-16">
+        <div className="relative overflow-hidden lg:min-h-[580px]">
+          <div className="absolute inset-0 overflow-hidden">
+            <Image
+              src="/Images/hero.png"
+              alt="VivaahAI couple"
+              fill
+              priority
+              className="object-cover object-center"
+              sizes="100vw"
+            />
+          </div>
+
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to right, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 40%, transparent 100%)" }}
           />
-        </div>
 
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to right, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 40%, transparent 100%)" }}
-        />
+          <div className="container-safe relative z-10 py-14 sm:py-20 md:py-28">
+            <div className="max-w-lg">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-5" style={{ color: "#5a1030" }}>
+                AI-Powered Matches,
+                <br />
+                Meaningful Connections
+              </h1>
 
-        <div className="container-safe relative z-10 py-20 md:py-28">
-          <div className="max-w-lg">
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-5" style={{ color: "#5a1030" }}>
-              AI-Powered Matches,
-              <br />
-              Meaningful Connections
-            </h1>
+              <p className="text-neutral-700 text-base md:text-lg mb-8 leading-relaxed">
+                VivaahAI combines advanced AI technology with
+                <br className="hidden sm:block" />
+                Indian values to help you find your life partner.
+              </p>
 
-            <p className="text-neutral-700 text-base md:text-lg mb-8 leading-relaxed">
-              VivaahAI combines advanced AI technology with
-              <br className="hidden sm:block" />
-              Indian values to help you find your life partner.
-            </p>
+              <div className="grid grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-3 mb-10">
+                {TRUST_BADGES.map((badge) => (
+                  <div key={badge.text} className="flex items-center gap-2">
+                    <span className="text-accent-500 flex-shrink-0">{badge.icon}</span>
+                    <span className="text-sm font-medium text-neutral-800">{badge.text}</span>
+                  </div>
+                ))}
+              </div>
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3 mb-10">
-              {TRUST_BADGES.map((badge) => (
-                <div key={badge.text} className="flex items-center gap-2">
-                  <span className="text-accent-500 flex-shrink-0">{badge.icon}</span>
-                  <span className="text-sm font-medium text-neutral-800">{badge.text}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/signup"
-                className="inline-flex items-center justify-center px-7 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors text-base"
-              >
-                Find Your Match
-              </Link>
-              <button className="inline-flex items-center justify-center gap-2 px-7 py-3 border-2 border-accent-500 text-accent-600 hover:bg-accent-50 font-semibold rounded-lg transition-colors text-base bg-white">
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                How It Works
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <SmartSignupLink className="inline-flex items-center justify-center px-7 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors text-base">
+                  Find Your Match
+                </SmartSignupLink>
+                <button className="inline-flex items-center justify-center gap-2 px-7 py-3 border-2 border-accent-500 text-accent-600 hover:bg-accent-50 font-semibold rounded-lg transition-colors text-base bg-white">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  How It Works
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Stats bar — overlaps bottom edge of hero */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-1/2 px-4 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <div className="bg-white rounded-2xl px-12 py-9">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        {/* Stats bar — overlaps the hero's bottom edge at every breakpoint (half on the hero, half below) */}
+        <div className="relative z-20 px-4 sm:px-6 -mt-10 sm:-mt-12 md:-mt-14">
+          <div className="mx-auto max-w-6xl animate-rise-in">
+            <div className="bg-white rounded-2xl shadow-xl px-6 sm:px-10 lg:px-12 py-6 sm:py-8 lg:py-9 transition-shadow duration-300 hover:shadow-2xl">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
                 {STATS.map((stat, i) => (
                   <div
                     key={stat.label}
-                    className={`flex items-center gap-6 ${i !== 0 ? "md:border-l md:border-neutral-200 md:pl-8" : ""}`}
+                    style={{ animationDelay: `${0.15 + i * 0.1}s` }}
+                    className={`group flex items-center gap-4 sm:gap-6 cursor-default animate-fade-in-up ${i !== 0 ? "lg:border-l lg:border-neutral-200 lg:pl-8" : ""}`}
                   >
-                    <div className="flex-shrink-0 [&>svg]:w-14 [&>svg]:h-14">{stat.icon}</div>
+                    <div className="flex-shrink-0 text-primary-700 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1 [&>svg]:w-10 [&>svg]:h-10 sm:[&>svg]:w-14 sm:[&>svg]:h-14">
+                      {stat.icon}
+                    </div>
                     <div>
-                      <div className="text-3xl md:text-4xl font-bold text-primary-700 leading-tight">{stat.value}</div>
-                      <div className="text-sm md:text-base text-neutral-500 whitespace-nowrap mt-1">{stat.label}</div>
+                      <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-700 leading-tight transition-colors duration-300 group-hover:text-secondary-500">
+                        {stat.value}
+                      </div>
+                      <div className="text-xs sm:text-sm md:text-base text-neutral-500 mt-1">{stat.label}</div>
                     </div>
                   </div>
                 ))}
@@ -337,9 +243,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Spacer — clears the stats bar's 50% overflow */}
-      <div className="bg-neutral-50" style={{ height: "92px" }} />
 
       {/* Why Choose VivaahAI */}
       <section className="py-20 bg-[#FFF8F4]">
@@ -373,7 +276,7 @@ export default function Home() {
         <div className="container-safe relative z-10">
           {/* Header */}
           <div className="text-center mb-14">
-            <span className="inline-block px-4 py-2 rounded-full bg-[#6B1B3D]/10 text-[#6B1B3D] text-sm font-semibold mb-4 tracking-wide uppercase">
+            <span className="inline-block px-4 py-2 rounded-full bg-[#6B1B3D]/10 text-[#6B1B3D] text-sm font-semibold mb-4 tracking-wide uppercase transition-all duration-300 hover:bg-[#6B1B3D] hover:text-[#D4AF37] hover:shadow-lg cursor-default">
               Success Stories
             </span>
             <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-3">
@@ -467,104 +370,14 @@ export default function Home() {
               </h2>
               <p className="text-white/80 text-lg">Join thousands of successful stories</p>
             </div>
-            <Link
-              href="/signup"
-              className="px-8 py-4 bg-[#D4AF37] hover:bg-[#c19d2f] text-[#6B1B3D] font-bold rounded-xl transition-all duration-300 shadow-lg"
-            >
+            <SmartSignupLink className="px-8 py-4 bg-[#D4AF37] hover:bg-[#c19d2f] text-[#6B1B3D] font-bold rounded-xl transition-all duration-300 shadow-lg">
               Get Started Now
-            </Link>
+            </SmartSignupLink>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-[#5C001D] via-[#7A0026] to-[#5C001D] text-white">
-        <div className="container-safe py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-10">
-
-            {/* Brand */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-[#D4A017]">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-7 h-7">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </span>
-                <span className="text-xl font-extrabold">VivaahAI</span>
-              </div>
-              <p className="text-sm text-white/60 leading-relaxed max-w-[230px]">
-                AI-powered matrimonial platform helping people find meaningful relationships.
-              </p>
-              {/* Social icons */}
-              <div className="flex items-center gap-3 mt-5">
-                {[
-                  { label: 'Facebook', path: 'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z' },
-                  { label: 'Instagram', path: 'M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zM17.5 6.5h.01M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5z' },
-                  { label: 'YouTube', path: 'M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.33zM9.75 15.02v-6.5l5.75 3.25-5.75 3.25z' },
-                  { label: 'LinkedIn', path: 'M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM6 9H2v12h4zM4 2a2 2 0 100 4 2 2 0 000-4z' },
-                ].map((s) => (
-                  <a key={s.label} href="#" aria-label={s.label}
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-[#D4A017] hover:text-[#5C001D] flex items-center justify-center transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d={s.path} /></svg>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h4 className="text-sm font-bold text-[#D4A017] mb-4">Quick Links</h4>
-              <ul className="space-y-2.5 text-sm text-white/70">
-                {['About Us', 'How It Works', 'Success Stories', 'Blog', 'Safety', 'Premium'].map((l) => (
-                  <li key={l}><Link href="#" className="hover:text-white transition-colors">{l}</Link></li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Support */}
-            <div>
-              <h4 className="text-sm font-bold text-[#D4A017] mb-4">Support</h4>
-              <ul className="space-y-2.5 text-sm text-white/70">
-                {['Help Center', 'Contact Us', 'Privacy Policy', 'Terms of Service', 'Refund Policy', 'FAQ'].map((l) => (
-                  <li key={l}><Link href="#" className="hover:text-white transition-colors">{l}</Link></li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Download App */}
-            <div>
-              <h4 className="text-sm font-bold text-[#D4A017] mb-4">Download App</h4>
-              <div className="space-y-3">
-                <a href="#" className="flex items-center gap-3 bg-black hover:bg-neutral-900 rounded-lg px-3 py-2 transition-colors w-fit">
-                  <svg viewBox="0 0 512 512" className="w-6 h-6"><path fill="#fff" d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z" /></svg>
-                  <div className="leading-tight">
-                    <p className="text-[9px] text-white/60">GET IT ON</p>
-                    <p className="text-sm font-semibold text-white">Google Play</p>
-                  </div>
-                </a>
-                <a href="#" className="flex items-center gap-3 bg-black hover:bg-neutral-900 rounded-lg px-3 py-2 transition-colors w-fit">
-                  <svg viewBox="0 0 384 512" className="w-6 h-6"><path fill="#fff" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" /></svg>
-                  <div className="leading-tight">
-                    <p className="text-[9px] text-white/60">Download on the</p>
-                    <p className="text-sm font-semibold text-white">App Store</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="border-t border-white/10">
-          <div className="container-safe py-5 flex flex-col md:flex-row items-center justify-between gap-3">
-            <p className="text-sm text-white/60">&copy; 2026 VivaahAI. All Rights Reserved.</p>
-            <div className="flex gap-6 text-sm text-white/60">
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

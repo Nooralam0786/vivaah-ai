@@ -1,19 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getAuthFromStorage } from '@/lib/auth';
 
 const RELIGIONS = ['Any', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist'];
 const AGE_RANGES = ['18-25', '25-30', '30-35', '35-40', '40+'];
 const INCOMES = ['Any', 'Below 3L', '3–5L', '5–10L', '10–20L', '20L+'];
 
-const PROFILES = [
-  { id: 1, name: 'Kavya Reddy', age: 26, profession: 'Software Engineer', location: 'Hyderabad', religion: 'Hindu', caste: 'Reddy', height: "5'5\"", matchPercent: 94, isOnline: true, isVerified: true, income: '10–20L', photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80' },
-  { id: 2, name: 'Meera Joshi', age: 28, profession: 'Doctor (MBBS)', location: 'Pune', religion: 'Hindu', caste: 'Brahmin', height: "5'4\"", matchPercent: 88, isOnline: false, isVerified: true, income: '20L+', photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&q=80' },
-  { id: 3, name: 'Divya Menon', age: 25, profession: 'Marketing Manager', location: 'Chennai', religion: 'Hindu', caste: 'Nair', height: "5'3\"", matchPercent: 82, isOnline: true, isVerified: false, income: '5–10L', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&q=80' },
-  { id: 4, name: 'Shruti Kapoor', age: 27, profession: 'Lawyer', location: 'Delhi', religion: 'Hindu', caste: 'Khatri', height: "5'6\"", matchPercent: 90, isOnline: true, isVerified: true, income: '10–20L', photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&q=80' },
-  { id: 5, name: 'Anjali Patel', age: 24, profession: 'CA Student', location: 'Ahmedabad', religion: 'Hindu', caste: 'Patel', height: "5'2\"", matchPercent: 78, isOnline: false, isVerified: true, income: '3–5L', photo: 'https://images.unsplash.com/photo-1535090333275-02e76c6777b0?w=300&q=80' },
-  { id: 6, name: 'Nisha Rao', age: 29, profession: 'Data Scientist', location: 'Bangalore', religion: 'Hindu', caste: 'Rao', height: "5'5\"", matchPercent: 85, isOnline: true, isVerified: true, income: '20L+', photo: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=300&q=80' },
-];
+interface DiscoverProfile {
+  id: string;
+  userId: string;
+  name: string;
+  age: number | null;
+  profession: string | null;
+  location: string | null;
+  religion: string | null;
+  caste: string | null;
+  height: string | null;
+  matchPercent: number;
+  isOnline: boolean;
+  isVerified: boolean;
+  income: string | null;
+  photo: string | null;
+}
 
 function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -30,14 +39,68 @@ export default function DiscoverPage() {
   const [ageRange, setAgeRange] = useState('');
   const [income, setIncome] = useState('Any');
   const [showFilters, setShowFilters] = useState(false);
-  const [liked, setLiked] = useState<Set<number>>(new Set());
+  const [liked, setLiked] = useState<Set<string>>(new Set());
+  const [profiles, setProfiles] = useState<DiscoverProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleLike = (id: number) => {
-    setLiked((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  useEffect(() => {
+    const auth = getAuthFromStorage();
+    if (!auth) {
+      setLoading(false);
+      setError('Please log in to discover matches.');
+      return;
+    }
+
+    fetch('/api/matches', { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.success) throw new Error(json.error?.message || 'Failed to load profiles');
+        setProfiles(json.data.matches);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load profiles'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggleLike = async (profile: DiscoverProfile) => {
+    const wasLiked = liked.has(profile.id);
+    setLiked((prev) => {
+      const s = new Set(prev);
+      wasLiked ? s.delete(profile.id) : s.add(profile.id);
+      return s;
+    });
+
+    if (wasLiked) return;
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+
+    try {
+      await fetch('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ targetUserId: profile.userId }),
+      });
+    } catch {
+      // Non-fatal — optimistic UI state already reflects intent.
+    }
   };
 
-  const filtered = PROFILES.filter((p) => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.location.toLowerCase().includes(search.toLowerCase());
+  const saveBookmark = async (profile: DiscoverProfile) => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    try {
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ targetUserId: profile.userId }),
+      });
+    } catch {
+      // Non-fatal.
+    }
+  };
+
+  const filtered = profiles.filter((p) => {
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.location ?? '').toLowerCase().includes(search.toLowerCase());
     const matchReligion = religion === 'Any' || p.religion === religion;
     const matchIncome = income === 'Any' || p.income === income;
     return matchSearch && matchReligion && matchIncome;
@@ -98,43 +161,64 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {/* Profile Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-4">
-        {filtered.map((profile) => (
-          <div key={profile.id} className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden group">
-            <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50">
-              <img src={profile.photo} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              <div className="absolute inset-0 bg-card-gradient" />
-              <div className={`absolute top-2.5 left-2.5 ${profile.matchPercent >= 90 ? 'bg-green-500' : profile.matchPercent >= 80 ? 'bg-blue-500' : 'bg-amber-500'} text-white text-xs font-bold px-2.5 py-1 rounded-full`}>
-                {profile.matchPercent}%
-              </div>
-              {profile.isOnline && (
-                <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
-              )}
-              <div className="absolute bottom-0 left-0 right-0 p-3">
-                <div className="flex items-center gap-1">
-                  <h3 className="text-white font-bold text-sm">{profile.name}, {profile.age}</h3>
-                  {profile.isVerified && <span className="text-blue-300 text-xs">✅</span>}
-                </div>
-                <p className="text-white/80 text-xs">{profile.profession}</p>
-                <p className="text-white/60 text-[10px]">📍 {profile.location}</p>
-              </div>
-            </div>
-            <div className="p-3 flex gap-2">
-              <button onClick={() => toggleLike(profile.id)}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${liked.has(profile.id) ? 'bg-primary-gradient text-white' : 'border border-primary-700 text-primary-700 hover:bg-primary-50'}`}>
-                {liked.has(profile.id) ? '❤️ Liked' : '🤍 Like'}
-              </button>
-              <button className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90">
-                View
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {loading && (
+        <div className="text-center py-16 text-neutral-400">
+          <p className="text-sm">Loading profiles…</p>
+        </div>
+      )}
 
-      {filtered.length === 0 && (
+      {!loading && error && (
+        <div className="text-center py-16 text-neutral-400">
+          <p className="font-medium text-neutral-600">{error}</p>
+          {!getAuthFromStorage() && (
+            <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>
+          )}
+        </div>
+      )}
+
+      {/* Profile Grid */}
+      {!loading && !error && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-4">
+          {filtered.map((profile) => (
+            <div key={profile.id} className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden group">
+              <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50">
+                <img src={profile.photo ?? undefined} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <div className="absolute inset-0 bg-card-gradient" />
+                <div className={`absolute top-2.5 left-2.5 ${profile.matchPercent >= 90 ? 'bg-green-500' : profile.matchPercent >= 80 ? 'bg-blue-500' : 'bg-amber-500'} text-white text-xs font-bold px-2.5 py-1 rounded-full`}>
+                  {profile.matchPercent}%
+                </div>
+                {profile.isOnline && (
+                  <div className="absolute top-2.5 right-8 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+                )}
+                <button onClick={() => saveBookmark(profile)} title="Save profile"
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-primary-700/80 transition-colors text-xs">
+                  🔖
+                </button>
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <div className="flex items-center gap-1">
+                    <h3 className="text-white font-bold text-sm">{profile.name}{profile.age ? `, ${profile.age}` : ''}</h3>
+                    {profile.isVerified && <span className="text-blue-300 text-xs">✅</span>}
+                  </div>
+                  <p className="text-white/80 text-xs">{profile.profession}</p>
+                  {profile.location && <p className="text-white/60 text-[10px]">📍 {profile.location}</p>}
+                </div>
+              </div>
+              <div className="p-3 flex gap-2">
+                <button onClick={() => toggleLike(profile)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${liked.has(profile.id) ? 'bg-primary-gradient text-white' : 'border border-primary-700 text-primary-700 hover:bg-primary-50'}`}>
+                  {liked.has(profile.id) ? '❤️ Liked' : '🤍 Like'}
+                </button>
+                <button className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90">
+                  View
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 && (
         <div className="text-center py-16 text-neutral-400">
           <div className="text-5xl mb-3">🔍</div>
           <p className="font-medium">No profiles found</p>

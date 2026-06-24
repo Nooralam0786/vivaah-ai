@@ -5,7 +5,9 @@
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
+    SIGNUP: '/api/auth/signup',
     LOGIN: '/api/auth/login',
+    SEND_OTP: '/api/auth/send-otp',
     VERIFY_OTP: '/api/auth/verify-otp',
     REFRESH_TOKEN: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
@@ -51,6 +53,11 @@ export const API_ENDPOINTS = {
     WEBHOOK: '/api/payments/webhook',
     BILLING_HISTORY: '/api/payments/billing-history',
     CANCEL_SUBSCRIPTION: '/api/payments/cancel',
+  },
+
+  // Contact
+  CONTACT: {
+    SEND: '/api/contact',
   },
 
   // Admin

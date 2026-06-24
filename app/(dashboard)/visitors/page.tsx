@@ -36,7 +36,7 @@ export default function VisitorsPage() {
           </div>
           <p className="text-white/70 text-sm">Upgrade to Premium to see who viewed your profile in the last 30 days</p>
         </div>
-        <a href="/premium" className="px-5 py-2.5 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-sm hover:opacity-90 transition-opacity whitespace-nowrap">
+        <a href="/premium-benefits" className="px-5 py-2.5 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-sm hover:opacity-90 transition-opacity whitespace-nowrap">
           Upgrade Now
         </a>
       </div>
@@ -49,7 +49,7 @@ export default function VisitorsPage() {
               <div className="absolute inset-0 z-10 backdrop-blur-md bg-white/50 flex flex-col items-center justify-center gap-3 rounded-2xl">
                 <span className="text-4xl">👑</span>
                 <p className="text-sm font-semibold text-neutral-700">Premium Feature</p>
-                <a href="/premium" className="px-4 py-2 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-xs">Unlock Profile</a>
+                <a href="/premium-benefits" className="px-4 py-2 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-xs">Unlock Profile</a>
               </div>
             )}
             <div className="flex items-center gap-4 p-4">

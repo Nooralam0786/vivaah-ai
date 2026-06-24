@@ -1,48 +1,114 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { getAuthFromStorage } from '@/lib/auth';
 
-const CONVERSATIONS = [
-  { id: 1, name: 'Ananya Singh', lastMsg: 'Hey! I saw your profile and I think we have a lot in common 😊', time: '2m ago', unread: 3, isOnline: true, photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80' },
-  { id: 2, name: 'Neha Gupta', lastMsg: "That's amazing! I love traveling too", time: '1h ago', unread: 0, isOnline: false, photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&q=80' },
-  { id: 3, name: 'Priya Sharma', lastMsg: 'Would you like to schedule a video call?', time: '3h ago', unread: 1, isOnline: true, photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80' },
-  { id: 4, name: 'Kavya Reddy', lastMsg: 'Nice to meet you!', time: '1d ago', unread: 0, isOnline: false, photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&q=80' },
-];
+interface Conversation {
+  id: string;
+  userId: string;
+  name: string;
+  photo: string | null;
+  isOnline: boolean;
+  lastMsg: string;
+  time: string;
+  unread: number;
+}
 
-const MOCK_MESSAGES: Record<number, { id: number; text: string; sender: 'me' | 'them'; time: string }[]> = {
-  1: [
-    { id: 1, text: "Hey! I saw your profile and I think we have a lot in common 😊", sender: 'them', time: '10:30 AM' },
-    { id: 2, text: "Hi Ananya! Yes, I noticed too. You're also into yoga and travel?", sender: 'me', time: '10:32 AM' },
-    { id: 3, text: "Yes! I love backpacking across Himachal. Have you been to Kasol?", sender: 'them', time: '10:33 AM' },
-    { id: 4, text: "I've been to Kheerganga! Kasol is on my list. Maybe we can plan a trip with family someday 😄", sender: 'me', time: '10:35 AM' },
-    { id: 5, text: "That's so cool! Are you free for a call this weekend?", sender: 'them', time: '10:38 AM' },
-  ],
-  2: [
-    { id: 1, text: "Hi! I read your profile bio and it's really thoughtful", sender: 'them', time: 'Yesterday' },
-    { id: 2, text: "Thank you! I try to be genuine. Your design work looks amazing btw", sender: 'me', time: 'Yesterday' },
-    { id: 3, text: "That's amazing! I love traveling too", sender: 'them', time: '1h ago' },
-  ],
-};
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'me' | 'them';
+  time: string;
+}
 
 export default function MessagesPage() {
-  const [activeChat, setActiveChat] = useState<number | null>(1);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeConv = CONVERSATIONS.find((c) => c.id === activeChat);
+  const auth = getAuthFromStorage();
+
+  useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      setError('Please log in to see your messages.');
+      return;
+    }
+
+    fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.success) throw new Error(json.error?.message || 'Failed to load conversations');
+        setConversations(json.data);
+        if (json.data.length > 0) setActiveChat(json.data[0].id);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load conversations'))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!activeChat || !auth || messages[activeChat]) return;
+
+    fetch(`/api/chat/conversations/${activeChat}/messages`, { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.success) return;
+        setMessages((prev) => ({ ...prev, [activeChat]: json.data }));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChat]);
+
+  const activeConv = conversations.find((c) => c.id === activeChat);
   const chatMessages = activeChat ? (messages[activeChat] || []) : [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const sendMessage = () => {
-    if (!message.trim() || !activeChat) return;
-    const newMsg = { id: Date.now(), text: message, sender: 'me' as const, time: 'Just now' };
-    setMessages((prev) => ({ ...prev, [activeChat]: [...(prev[activeChat] || []), newMsg] }));
+  const sendMessage = async () => {
+    if (!message.trim() || !activeChat || !activeConv || !auth) return;
+    const text = message;
     setMessage('');
+
+    const optimistic: ChatMessage = { id: `local-${Date.now()}`, text, sender: 'me', time: 'Just now' };
+    setMessages((prev) => ({ ...prev, [activeChat]: [...(prev[activeChat] || []), optimistic] }));
+
+    try {
+      await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ content: text, toUserId: activeConv.userId }),
+      });
+    } catch {
+      // Optimistic message stays in the UI even if the network call fails.
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
+        <p className="text-sm text-neutral-400">Loading your conversations…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto animate-fade-in">
+        <h1 className="text-xl font-bold text-neutral-900 mb-4">Messages</h1>
+        <div className="text-center py-16 text-neutral-400">
+          <p className="font-medium text-neutral-600">{error}</p>
+          {!auth && <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
@@ -59,12 +125,15 @@ export default function MessagesPage() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {CONVERSATIONS.map((conv) => (
+            {conversations.length === 0 && (
+              <p className="p-4 text-sm text-neutral-400">No conversations yet — like a profile to start chatting!</p>
+            )}
+            {conversations.map((conv) => (
               <button key={conv.id} onClick={() => setActiveChat(conv.id)}
                 className={`w-full flex items-center gap-3 p-4 hover:bg-vivaah-bg transition-colors text-left border-b border-vivaah-border/50 ${activeChat === conv.id ? 'bg-primary-50 border-l-2 border-l-primary-700' : ''}`}>
                 <div className="relative flex-shrink-0">
                   <div className="w-11 h-11 rounded-full overflow-hidden bg-primary-100">
-                    <img src={conv.photo} alt={conv.name} className="w-full h-full object-cover"
+                    <img src={conv.photo ?? undefined} alt={conv.name} className="w-full h-full object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   </div>
                   {conv.isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />}
@@ -72,7 +141,6 @@ export default function MessagesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm text-neutral-900 truncate">{conv.name}</span>
-                    <span className="text-[10px] text-neutral-400 flex-shrink-0 ml-2">{conv.time}</span>
                   </div>
                   <p className="text-xs text-neutral-500 truncate mt-0.5">{conv.lastMsg}</p>
                 </div>
@@ -96,7 +164,7 @@ export default function MessagesPage() {
               </button>
               <div className="relative">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100">
-                  <img src={activeConv.photo} alt={activeConv.name} className="w-full h-full object-cover" />
+                  <img src={activeConv.photo ?? undefined} alt={activeConv.name} className="w-full h-full object-cover" />
                 </div>
                 {activeConv.isOnline && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />}
               </div>
@@ -124,7 +192,9 @@ export default function MessagesPage() {
                     ? 'bg-primary-gradient text-white rounded-tr-sm'
                     : 'bg-white text-neutral-800 border border-vivaah-border rounded-tl-sm shadow-xs'}`}>
                     {msg.text}
-                    <p className={`text-[10px] mt-1 ${msg.sender === 'me' ? 'text-white/60' : 'text-neutral-400'}`}>{msg.time}</p>
+                    <p className={`text-[10px] mt-1 ${msg.sender === 'me' ? 'text-white/60' : 'text-neutral-400'}`}>
+                      {typeof msg.time === 'string' && msg.time === 'Just now' ? msg.time : new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
                 </div>
               ))}

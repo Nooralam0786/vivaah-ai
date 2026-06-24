@@ -1,30 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { Check } from 'lucide-react';
 
 const items = [
-  { label: 'Profile Photo', done: true },
-  { label: 'About You', done: true },
-  { label: 'Interests', done: true },
-  { label: 'Finally You', done: true },
+  { label: 'Profile Photo',        done: true },
+  { label: 'Family Information',   done: false },
+  { label: 'About You',            done: true },
+  { label: 'Horoscope',            done: false },
+  { label: 'Interests',            done: true },
   { label: 'Lifestyle Information', done: true },
-  { label: 'Family Info', done: false },
-  { label: 'ID Verification', done: false },
+  { label: 'ID Verification',      done: true },
 ];
 
 const strength = 85;
+const DONE_COUNT = items.filter((i) => i.done).length;
 
-function CircularProgress({ value, size = 88 }: { value: number; size?: number }) {
-  const radius = (size - 10) / 2;
+function DonutChart({ value, size = 90 }: { value: number; size?: number }) {
+  const strokeWidth = 9;
+  const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
 
-  const color = value >= 80 ? '#22c55e' : value >= 60 ? '#D4A017' : '#ef4444';
-
   return (
-    <svg width={size} height={size} className="transform -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#EDE7E9" strokeWidth="8" />
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth="8"
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={radius}
+        fill="none" stroke="#EDE7E9" strokeWidth={strokeWidth} />
+      <circle cx={size / 2} cy={size / 2} r={radius}
+        fill="none" stroke="#22c55e" strokeWidth={strokeWidth}
         strokeDasharray={circumference} strokeDashoffset={offset}
         strokeLinecap="round" className="transition-all duration-1000" />
     </svg>
@@ -32,46 +35,61 @@ function CircularProgress({ value, size = 88 }: { value: number; size?: number }
 }
 
 export default function ProfileStrength() {
-  const done = items.filter((i) => i.done).length;
-
   return (
-    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card p-5 md:p-6">
-      <h2 className="text-base font-bold text-neutral-900 mb-4">Profile Strength</h2>
+    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card p-4">
 
-      {/* Circular gauge */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="relative w-22 h-22 flex-shrink-0">
-          <CircularProgress value={strength} size={88} />
+      {/* Title */}
+      <h2 className="text-sm font-bold text-neutral-900 mb-3">Profile Strength</h2>
+
+      {/* Donut + text */}
+      <div className="flex items-start gap-3 mb-4">
+        {/* Chart */}
+        <div className="relative flex-shrink-0" style={{ width: 90, height: 90 }}>
+          <DonutChart value={strength} size={90} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-neutral-900 leading-none">{strength}%</span>
-            <span className="text-[10px] text-green-600 font-semibold mt-0.5">Excellent</span>
+            <span className="text-lg font-bold text-neutral-900 leading-none">{strength}%</span>
+            <span className="text-[10px] text-green-500 font-semibold mt-0.5">Excellent</span>
           </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-neutral-700">
-            {strength >= 80 ? '🌟 Excellent!' : strength >= 60 ? '👍 Good' : '💡 Needs Work'}
+
+        {/* Description */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-neutral-800 flex items-center gap-1 mb-1">
+            <span>🌟</span> Excellent!
           </p>
-          <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+          <p className="text-[11px] text-neutral-400 leading-relaxed">
             Your profile is highly visible to potential matches. Complete the remaining items for even better reach.
           </p>
-          <p className="text-xs font-medium text-primary-700 mt-1">{done}/{items.length} items complete</p>
+          <p className="text-[11px] font-bold text-primary-700 mt-1.5">
+            {DONE_COUNT}/{items.length} items complete
+          </p>
         </div>
       </div>
 
-      {/* Checklist */}
-      <div className="grid grid-cols-2 gap-1.5 mb-4">
+      {/* Divider */}
+      <div className="h-px bg-vivaah-border mb-3" />
+
+      {/* Checklist — 2 columns */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-4">
         {items.map((item) => (
-          <div key={item.label} className={`flex items-center gap-2 text-xs py-1 ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>
-            <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${item.done ? 'bg-green-100 text-green-600' : 'bg-neutral-100 text-neutral-400'}`}>
-              {item.done ? '✓' : '○'}
+          <div key={item.label} className="flex items-center gap-1.5">
+            {item.done ? (
+              <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Check size={9} className="text-green-600" strokeWidth={3} />
+              </span>
+            ) : (
+              <span className="w-4 h-4 rounded-full border border-neutral-300 flex-shrink-0" />
+            )}
+            <span className={`text-[11px] leading-tight ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>
+              {item.label}
             </span>
-            {item.label}
           </div>
         ))}
       </div>
 
+      {/* Link */}
       <Link href="/profile"
-        className="flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-secondary-500 transition-colors">
+        className="text-xs font-bold text-primary-700 hover:text-secondary-500 transition-colors">
         Improve Profile →
       </Link>
     </div>

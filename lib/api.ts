@@ -49,9 +49,11 @@ class APIClient {
               return this.client(originalRequest);
             }
           }
-          // Redirect to login
+          // Clear stale credentials before redirecting so AuthContext starts clean
           if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
+            localStorage.removeItem('vivaah_auth');
+            localStorage.removeItem('vivaah_user');
+            window.location.href = '/login';
           }
         }
 
@@ -62,18 +64,35 @@ class APIClient {
 
   private getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
+    try {
+      const raw = localStorage.getItem('vivaah_auth');
+      if (!raw) return null;
+      const auth = JSON.parse(raw) as { accessToken: string; expiresAt: number };
+      if (auth.expiresAt < Date.now()) return null;
+      return auth.accessToken;
+    } catch {
+      return null;
+    }
   }
 
   private setAccessToken(token: string) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', token);
-    }
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('vivaah_auth');
+      if (!raw) return;
+      const auth = JSON.parse(raw);
+      auth.accessToken = token;
+      // Extend the client-side expiry to match the new 24h JWT window
+      auth.expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+      localStorage.setItem('vivaah_auth', JSON.stringify(auth));
+    } catch { /* ignore */ }
   }
 
   private async refreshToken(): Promise<string | null> {
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const raw = localStorage.getItem('vivaah_auth');
+      if (!raw) return null;
+      const { refreshToken } = JSON.parse(raw) as { refreshToken: string };
       if (!refreshToken) return null;
 
       const response = await this.client.post<APIResponse<{ token: string }>>('/api/auth/refresh', {
