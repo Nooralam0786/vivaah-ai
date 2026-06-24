@@ -1,46 +1,80 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import StatsCards from '@/components/dashboard/StatsCards';
 import { AIRecommendedMatches } from '@/components/dashboard/MatchCard';
 import ProfileStrength from '@/components/dashboard/ProfileStrength';
 import FamilyConnect from '@/components/dashboard/FamilyConnect';
 import RecentActivity from '@/components/dashboard/RecentActivity';
+import { useAuth } from '@/hooks/useAuth';
+import { UserRound } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const firstName = user?.fullName ? user.fullName.split(' ')[0] : 'there';
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    fetch('/api/dashboard/stats', { headers: { Authorization: `Bearer ${auth.accessToken}` } })
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setMatchCount(json.data.matches); })
+      .catch(() => {});
+  }, []);
+
   return (
-    <div className="space-y-5 max-w-7xl mx-auto animate-fade-in">
-      {/* Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="space-y-5 animate-fade-in">
+
+      {/* Welcome Header — full width */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-neutral-900">
-            Welcome back, Rohan! 👋
+            Welcome back, {firstName}! 👋
           </h1>
-          <p className="text-sm text-neutral-500 mt-0.5">You have <span className="font-semibold text-primary-700">12 new matches</span> today</p>
+          <p className="text-sm text-neutral-500 mt-1">
+            {matchCount === null ? (
+              <span className="inline-block h-4 w-40 bg-neutral-200 rounded animate-pulse" />
+            ) : matchCount > 0 ? (
+              <>You have <span className="font-semibold text-primary-700">{matchCount} compatible matches</span></>
+            ) : (
+              'Complete your profile to start getting matches'
+            )}
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0 items-center">
           <a href="/profile"
-            className="px-4 py-2 border border-primary-700 text-primary-700 rounded-xl text-sm font-medium hover:bg-primary-50 transition-colors">
+            className="flex items-center gap-1.5 px-4 py-2 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-medium hover:bg-neutral-50 transition-colors whitespace-nowrap">
+            <UserRound size={15} className="text-neutral-500" />
             Edit Profile
           </a>
           <a href="/discover"
-            className="px-4 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-            Discover →
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity whitespace-nowrap">
+            Discover People →
           </a>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards — full width */}
       <StatsCards />
 
-      {/* AI Matches */}
-      <AIRecommendedMatches />
+      {/* 2-column: Main content + Right panel */}
+      <div className="flex gap-5 items-start">
 
-      {/* Profile Strength + Family Connect */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-        <ProfileStrength />
-        <FamilyConnect />
+        {/* Left — main content */}
+        <div className="flex-1 min-w-0 space-y-5">
+          <AIRecommendedMatches />
+          <RecentActivity />
+        </div>
+
+        {/* Right panel — Profile Strength + Family Connect */}
+        <div className="hidden xl:flex flex-col gap-4 w-[300px] flex-shrink-0">
+          <ProfileStrength />
+          <FamilyConnect />
+        </div>
       </div>
 
-      {/* Recent Activity */}
-      <RecentActivity />
     </div>
   );
 }

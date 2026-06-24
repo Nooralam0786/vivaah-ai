@@ -1,51 +1,199 @@
 'use client';
 
-interface StatCard {
-  label: string;
-  value: string | number;
-  change: string;
-  isPositive: boolean;
-  icon: string;
-  color: string;
-  bgColor: string;
+import { useEffect, useState } from 'react';
+import { Eye, Heart, MessageSquare, Zap, TrendingUp } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
+
+interface Stats {
+  matches: number;
+  likesReceived: number;
+  messages: number;
+  profileStrength: number;
 }
 
-const stats: StatCard[] = [
-  { label: 'Profile Views', value: 128, change: '+23% this week', isPositive: true, icon: '👁️', color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  { label: 'New Matches', value: 12, change: '+8% this week', isPositive: true, icon: '💕', color: 'text-primary-700', bgColor: 'bg-primary-50' },
-  { label: 'Messages', value: 12, change: '+15% this week', isPositive: true, icon: '💬', color: 'text-green-600', bgColor: 'bg-green-50' },
-  { label: 'Profile Strength', value: '85%', change: 'Excellent', isPositive: true, icon: '⚡', color: 'text-gold-600', bgColor: 'bg-amber-50', },
-];
+// Generates a simple upward-trending sparkline ending at `current`
+function trendData(current: number, points = 10): number[] {
+  if (current === 0) return Array(points).fill(0);
+  return Array.from({ length: points }, (_, i) => {
+    const base = Math.round((current * (i + 1)) / points);
+    const jitter = Math.round((Math.random() - 0.3) * (current * 0.15));
+    return Math.max(0, base + jitter);
+  });
+}
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(...data, 1);
+  const w = 64;
+  const h = 22;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - (v / max) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+  const safe = (id: string) => id.replace(/[^a-z0-9]/gi, '');
+  return (
+    <svg width={w} height={h} className="overflow-visible flex-shrink-0">
+      <defs>
+        <linearGradient id={`sg-${safe(color)}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0"    />
+        </linearGradient>
+      </defs>
+      <polygon
+        points={`0,${h} ${pts.join(' ')} ${w},${h}`}
+        fill={`url(#sg-${safe(color)})`}
+      />
+      <polyline
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card animate-pulse">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-7 h-7 bg-neutral-200 rounded-lg" />
+        <div className="h-3 bg-neutral-200 rounded w-24 flex-1" />
+      </div>
+      <div className="h-6 bg-neutral-200 rounded w-12 mb-2" />
+      <div className="h-3 bg-neutral-100 rounded w-20" />
+    </div>
+  );
+}
 
 export default function StatsCards() {
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-      {stats.map((stat, i) => (
-        <div key={stat.label}
-          className="bg-white rounded-2xl p-4 md:p-5 border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200 group"
-          style={{ animationDelay: `${i * 0.1}s` }}>
-          <div className="flex items-start justify-between mb-3">
-            <div className={`w-10 h-10 ${stat.bgColor} rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-200`}>
-              {stat.icon}
-            </div>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${stat.isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-              {stat.isPositive ? '↑' : '↓'}
-            </span>
-          </div>
-          <div className="text-2xl font-bold text-neutral-900 mb-0.5">{stat.value}</div>
-          <div className="text-xs text-neutral-500 font-medium">{stat.label}</div>
-          <div className={`text-xs mt-1 font-medium ${stat.isPositive ? 'text-green-600' : 'text-red-500'}`}>
-            {stat.change}
-          </div>
+  const [stats, setStats]     = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-          {/* Progress bar for Profile Strength */}
-          {stat.label === 'Profile Strength' && (
-            <div className="mt-2 h-1.5 bg-vivaah-border rounded-full overflow-hidden">
-              <div className="h-full bg-gold-gradient rounded-full" style={{ width: '85%' }} />
+  useEffect(() => {
+    const auth = getAuthFromStorage();
+    if (!auth) { setLoading(false); return; }
+
+    fetch('/api/dashboard/stats', {
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setStats(json.data); })
+      .catch(() => {/* show zeros */})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    );
+  }
+
+  const s = stats ?? { matches: 0, likesReceived: 0, messages: 0, profileStrength: 0 };
+
+  const cards = [
+    {
+      label:       'Profile Views',
+      value:       s.likesReceived,
+      change:      s.likesReceived > 0 ? `${s.likesReceived} people liked you` : 'No likes yet',
+      Icon:        Eye,
+      iconBg:      'bg-purple-100',
+      iconColor:   'text-purple-500',
+      sparkColor:  '#8b5cf6',
+      sparkData:   trendData(s.likesReceived),
+      isStrength:  false,
+    },
+    {
+      label:       'New Matches',
+      value:       s.matches,
+      change:      s.matches > 0 ? `${s.matches} compatible profiles` : 'Explore to get matches',
+      Icon:        Heart,
+      iconBg:      'bg-rose-100',
+      iconColor:   'text-rose-500',
+      sparkColor:  '#f43f5e',
+      sparkData:   trendData(s.matches),
+      isStrength:  false,
+    },
+    {
+      label:       'Messages',
+      value:       s.messages,
+      change:      s.messages > 0 ? `${s.messages} unread` : 'No messages yet',
+      Icon:        MessageSquare,
+      iconBg:      'bg-blue-100',
+      iconColor:   'text-blue-500',
+      sparkColor:  '#3b82f6',
+      sparkData:   trendData(s.messages),
+      isStrength:  false,
+    },
+    {
+      label:       'Profile Strength',
+      value:       `${s.profileStrength}%`,
+      change:      s.profileStrength >= 80 ? 'Excellent' : s.profileStrength >= 50 ? 'Good' : 'Needs work',
+      Icon:        Zap,
+      iconBg:      'bg-amber-100',
+      iconColor:   'text-amber-500',
+      sparkColor:  '#D4A017',
+      sparkData:   [],
+      isStrength:  true,
+      strengthVal: s.profileStrength,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {cards.map((card) => {
+        const { Icon } = card;
+        const changeColor =
+          card.isStrength
+            ? card.strengthVal! >= 80 ? 'text-green-500' : card.strengthVal! >= 50 ? 'text-amber-500' : 'text-red-400'
+            : 'text-green-500';
+
+        return (
+          <div
+            key={card.label}
+            className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200"
+          >
+            {/* Row 1: icon + label */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-7 h-7 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <Icon size={14} className={card.iconColor} />
+              </div>
+              <span className="text-[11px] text-neutral-500 font-medium leading-tight">{card.label}</span>
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Row 2: value */}
+            <div className="text-xl font-bold text-neutral-900 leading-none mb-2">{card.value}</div>
+
+            {/* Row 3: change text + sparkline OR progress bar */}
+            {card.isStrength ? (
+              <div className="space-y-1">
+                <span className={`text-[11px] font-semibold ${changeColor}`}>{card.change}</span>
+                <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width:      `${card.strengthVal}%`,
+                      background: 'linear-gradient(90deg, #D4A017 0%, #F5C347 100%)',
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-end justify-between gap-2">
+                <span className={`text-[11px] font-medium ${changeColor} leading-tight`}>
+                  <TrendingUp size={10} className="inline mr-0.5" />
+                  {card.change}
+                </span>
+                <Sparkline data={card.sparkData} color={card.sparkColor} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

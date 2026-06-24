@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { AuthService } from '@/services/auth.service';
+import { useAuth } from '@/hooks/useAuth';
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const HeartLogoIcon = () => (
@@ -111,10 +113,11 @@ const stats = [
 /* ─── Main Component ─────────────────────────────────────── */
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [form, setForm] = useState({ identifier: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
 
   const validate = () => {
     const errs: typeof errors = {};
@@ -129,9 +132,18 @@ export default function LoginPage() {
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    router.push('/dashboard');
+    try {
+      /* 1. Hit login API — get tokens */
+      const tokens = await AuthService.login(form);
+      /* 2. Set user in global AuthContext (fetches profile + caches) */
+      await login(tokens);
+      /* 3. Go to dashboard */
+      router.push('/dashboard');
+    } catch (err) {
+      setErrors({ form: err instanceof Error ? err.message : 'Failed to log in. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -252,6 +264,10 @@ export default function LoginPage() {
                     Forgot Password?
                   </Link>
                 </div>
+
+                {errors.form && (
+                  <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errors.form}</p>
+                )}
 
                 {/* Login button */}
                 <button type="submit" disabled={loading}

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { getAuthFromStorage } from '@/lib/auth';
 
 const TABS = ['Account', 'Privacy', 'Notifications', 'Security', 'Preferences'];
 
@@ -26,17 +28,33 @@ function SettingRow({ label, desc, children }: { label: string; desc?: string; c
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('Account');
 
-  const [account, setAccount] = useState({ name: 'Rohan Sharma', email: 'rohan@example.com', phone: '+91 9876543210', language: 'English' });
+  const [account, setAccount] = useState({ name: '', email: '', phone: '', language: 'English' });
   const [privacy, setPrivacy] = useState({ showPhone: false, showPhoto: true, profileVisibility: 'all', showOnline: true, hideCaste: false });
   const [notifications, setNotifications] = useState({ newMatch: true, message: true, visitor: true, interest: true, emailDigest: false, smsAlerts: true, pushNotif: true });
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    if (!user) return;
+    const u = user as unknown as { fullName?: string; email?: string; phone?: string };
+    setAccount((prev) => ({ ...prev, name: u.fullName ?? '', email: u.email ?? '', phone: u.phone ?? '' }));
+  }, [user]);
+
   const handleSave = async () => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
     setSaved(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSaved(false);
+    try {
+      await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ fullName: account.name }),
+      });
+    } finally {
+      setTimeout(() => setSaved(false), 1200);
+    }
   };
 
   return (

@@ -6,13 +6,37 @@ import { OTPVerification } from '@/types';
 import apiClient from '@/lib/api';
 import { API_ENDPOINTS } from '@/config/api';
 import { saveAuthToStorage, getTokenExpirationTime } from '@/lib/auth';
+import type { SignupFormData, LoginFormData } from '@/lib/validation';
+
+interface AuthTokens {
+  token: string;
+  refreshToken: string;
+  userId: string;
+  expiresIn: number;
+}
 
 export class AuthService {
   /**
-   * Send OTP to phone number
+   * Create a new account with full name, email, phone and password.
+   * Returns raw tokens — caller (AuthContext.login) is responsible for persisting them.
+   */
+  static async signup(payload: SignupFormData) {
+    return (await apiClient.post(API_ENDPOINTS.AUTH.SIGNUP, payload)) as AuthTokens;
+  }
+
+  /**
+   * Log in with an email or phone number + password.
+   * Returns raw tokens — caller (AuthContext.login) is responsible for persisting them.
+   */
+  static async login(payload: LoginFormData) {
+    return (await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, payload)) as AuthTokens;
+  }
+
+  /**
+   * Send OTP to phone number (used for phone verification, not login)
    */
   static async sendOTP(phone: string) {
-    const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { phone });
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.SEND_OTP, { phone });
     return response as { otp_sent: boolean; expires_in: number };
   }
 

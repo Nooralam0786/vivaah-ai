@@ -3,15 +3,28 @@
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-const mockUser = { name: 'Rohan Sharma', avatar: null, isPremium: true };
+import { useAuth } from '@/hooks/useAuth';
+import {
+  Menu, Search, Bell, MessageSquare, ChevronDown,
+  Crown, User, Settings, HelpCircle, LogOut,
+} from 'lucide-react';
 
 export default function DashboardNavbar() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const displayName = user?.fullName || 'User';
+  const displayEmail = user?.email || '';
+  const photoUrl = user?.photo || null;
+
+  const handleSignOut = async () => {
+    logout();
+    router.replace('/login');
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -30,34 +43,50 @@ export default function DashboardNavbar() {
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 z-20 h-14 bg-white border-b border-vivaah-border flex items-center px-4 md:px-6 gap-3 shadow-sm">
-      {/* Spacer for mobile hamburger */}
-      <div className="w-10 lg:hidden" />
 
-      {/* Page Title - shown on mobile */}
-      <div className="flex-1 lg:flex-none">
-        <span className="text-sm font-semibold text-neutral-700 lg:hidden">VivaahAI</span>
+      {/* Hamburger — visible on mobile only (desktop sidebar is always open) */}
+      <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-neutral-500 hover:bg-vivaah-muted transition-colors flex-shrink-0">
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Search Bar */}
+      <div className="flex-1 max-w-xs hidden sm:block">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Search anything..."
+            className="w-full pl-9 pr-14 py-1.5 bg-vivaah-bg border border-vivaah-border rounded-xl text-sm text-neutral-700 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700/40 transition-all"
+          />
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded font-medium tracking-wide">
+            ⌘ K
+          </span>
+        </div>
       </div>
 
-      <div className="flex-1 hidden lg:block" />
+      <div className="flex-1" />
 
-      <div className="flex items-center gap-2">
-        {/* Upgrade Button */}
-        {!mockUser.isPremium && (
-          <Link href="/premium"
-            className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 bg-gold-gradient text-neutral-900 text-xs font-bold rounded-full hover:opacity-90 transition-opacity shadow-premium">
-            <span>⭐</span> Upgrade to Premium
-          </Link>
-        )}
+      {/* Right Actions */}
+      <div className="flex items-center gap-1.5">
+
+        {/* Upgrade to Premium */}
+        <Link href="/premium-benefits"
+          className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-gold-gradient text-neutral-900 text-xs font-bold rounded-full hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap">
+          <Crown className="w-3.5 h-3.5" />
+          Upgrade to Premium
+        </Link>
 
         {/* Notifications */}
         <div ref={notifRef} className="relative">
-          <button onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
-            className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-600">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-700 rounded-full" />
+          <button
+            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+            className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
+            <Bell className="w-5 h-5" />
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary-700 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+              12
+            </span>
           </button>
+
           {notifOpen && (
             <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-vivaah-border py-2 z-50 animate-slide-up">
               <div className="px-4 py-2 border-b border-vivaah-border flex items-center justify-between">
@@ -65,7 +94,8 @@ export default function DashboardNavbar() {
                 <button className="text-xs text-primary-700 font-medium hover:underline">Mark all read</button>
               </div>
               {notifications.map((n) => (
-                <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-vivaah-bg cursor-pointer transition-colors ${n.unread ? 'bg-primary-50/50' : ''}`}>
+                <div key={n.id}
+                  className={`flex items-start gap-3 px-4 py-3 hover:bg-vivaah-bg cursor-pointer transition-colors ${n.unread ? 'bg-primary-50/40' : ''}`}>
                   <div className="w-8 h-8 bg-primary-50 rounded-full flex items-center justify-center text-base flex-shrink-0">{n.icon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-neutral-700 leading-snug">{n.text}</p>
@@ -75,7 +105,7 @@ export default function DashboardNavbar() {
                 </div>
               ))}
               <div className="px-4 pt-2 border-t border-vivaah-border">
-                <Link href="/notifications" className="block text-center text-xs text-primary-700 font-medium py-2 hover:underline">
+                <Link href="/notifications" className="block text-center text-xs text-primary-700 font-medium py-1.5 hover:underline">
                   View all notifications
                 </Link>
               </div>
@@ -85,51 +115,53 @@ export default function DashboardNavbar() {
 
         {/* Messages */}
         <Link href="/messages"
-          className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-600">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-          </svg>
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-primary-700 rounded-full text-white text-[9px] font-bold flex items-center justify-center">12</span>
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
+          <MessageSquare className="w-5 h-5" />
         </Link>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-vivaah-border mx-1 hidden md:block" />
 
         {/* Profile Dropdown */}
         <div ref={profileRef} className="relative">
-          <button onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
-            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-vivaah-muted transition-colors">
-            <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-              {mockUser.avatar ? <img src={mockUser.avatar} alt={mockUser.name} className="w-full h-full object-cover" /> : mockUser.name[0]}
+          <button
+            onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-vivaah-muted transition-colors">
+            <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+              {photoUrl
+                ? <img src={photoUrl} alt={displayName} className="w-full h-full object-cover" />
+                : displayName[0]?.toUpperCase() ?? '?'}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-xs font-semibold text-neutral-900 leading-none">{mockUser.name}</p>
-              {mockUser.isPremium && <p className="text-[10px] text-gold-600 font-medium leading-none mt-0.5">Premium Member</p>}
+              <p className="text-xs font-semibold text-neutral-900 leading-none">{displayName}</p>
+              <p className="text-[10px] text-gold-500 font-semibold leading-none mt-0.5">Premium Member</p>
             </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3.5 h-3.5 text-neutral-400 hidden md:block transition-transform ${profileOpen ? 'rotate-180' : ''}`}>
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 hidden md:block transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-vivaah-border py-2 z-50 animate-slide-up">
+            <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-vivaah-border py-2 z-50 animate-slide-up">
               <div className="px-4 py-3 border-b border-vivaah-border">
-                <p className="font-semibold text-neutral-900 text-sm">{mockUser.name}</p>
-                <p className="text-xs text-neutral-400 mt-0.5">rohan.sharma@email.com</p>
+                <p className="font-semibold text-neutral-900 text-sm">{displayName}</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{displayEmail}</p>
               </div>
               {[
-                { href: '/profile', label: 'View Profile', icon: '👤' },
-                { href: '/settings', label: 'Account Settings', icon: '⚙️' },
-                { href: '/premium', label: 'Premium Benefits', icon: '👑' },
-                { href: '/help', label: 'Help & Support', icon: '❓' },
-              ].map((item) => (
-                <Link key={item.href} href={item.href}
+                { href: '/profile', label: 'View Profile', Icon: User },
+                { href: '/settings', label: 'Account Settings', Icon: Settings },
+                { href: '/premium-benefits', label: 'Premium Benefits', Icon: Crown },
+                { href: '/help', label: 'Help & Support', Icon: HelpCircle },
+              ].map(({ href, label, Icon }) => (
+                <Link key={href} href={href}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-600 hover:bg-vivaah-bg hover:text-primary-700 transition-colors">
-                  <span className="text-base">{item.icon}</span>
-                  {item.label}
+                  <Icon className="w-4 h-4" />
+                  {label}
                 </Link>
               ))}
               <div className="border-t border-vivaah-border mt-1 pt-1">
-                <button onClick={() => router.push('/login')}
+                <button onClick={handleSignOut}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full">
-                  <span>🚪</span> Sign Out
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
                 </button>
               </div>
             </div>

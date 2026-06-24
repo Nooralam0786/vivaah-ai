@@ -1,91 +1,272 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { Eye, Heart } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
 
-const VISITORS = [
-  { id: 1, name: 'Kavya Reddy', age: 26, profession: 'Software Engineer', location: 'Hyderabad', time: '2 hours ago', matchPercent: 94, isVerified: true, photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80' },
-  { id: 2, name: 'Priya Sharma', age: 29, profession: 'Doctor', location: 'Chennai', time: '5 hours ago', matchPercent: 88, isVerified: true, photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&q=80' },
-  { id: 3, name: 'Meera Joshi', age: 27, profession: 'Marketing Lead', location: 'Mumbai', time: '1 day ago', matchPercent: 82, isVerified: false, photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80' },
-  { id: 4, name: 'Nisha Rao', age: 28, profession: 'Data Scientist', location: 'Bangalore', time: '2 days ago', matchPercent: 90, isVerified: true, photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&q=80' },
-  { id: 5, name: 'Shruti Kapoor', age: 25, profession: 'Lawyer', location: 'Delhi', time: '3 days ago', matchPercent: 86, isVerified: true, photo: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=100&q=80' },
-  { id: 6, name: 'Premium Member', age: 27, profession: 'Unlock to view', location: '???', time: '1 day ago', matchPercent: 95, isVerified: true, photo: '', isPremium: true },
-];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export default function VisitorsPage() {
-  const [liked, setLiked] = useState<Set<number>>(new Set());
+interface Visitor {
+  id: string;
+  userId: string;
+  name: string;
+  age: number | null;
+  profession: string | null;
+  location: string | null;
+  religion: string | null;
+  photo: string | null;
+  isVerified: boolean;
+  isOnline: boolean;
+  matchPercent: number;
+  viewedAt: string;
+  viewedAgo: string;
+}
+
+function scoreBg(pct: number) {
+  if (pct >= 90) return 'bg-emerald-500';
+  if (pct >= 80) return 'bg-blue-500';
+  if (pct >= 70) return 'bg-amber-500';
+  return 'bg-neutral-400';
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card p-4 flex items-center gap-4 animate-pulse">
+      <div className="w-16 h-16 rounded-2xl bg-neutral-200 flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3.5 bg-neutral-200 rounded w-36" />
+        <div className="h-3 bg-neutral-100 rounded w-24" />
+        <div className="h-3 bg-neutral-100 rounded w-20" />
+      </div>
+      <div className="flex-shrink-0 space-y-2">
+        <div className="h-7 bg-neutral-100 rounded-xl w-20" />
+        <div className="h-7 bg-neutral-100 rounded-xl w-20" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Visitor Card ─────────────────────────────────────────────────────────────
+
+function VisitorCard({
+  visitor,
+  isLiked,
+  onLike,
+}: {
+  visitor: Visitor;
+  isLiked: boolean;
+  onLike: () => void;
+}) {
+  const [imgErr, setImgErr] = useState(false);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200">
+      <div className="flex items-center gap-4 p-4">
+        {/* Photo */}
+        <div className="relative flex-shrink-0">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50">
+            {visitor.photo && !imgErr ? (
+              <img
+                src={visitor.photo}
+                alt={visitor.name}
+                className="w-full h-full object-cover"
+                onError={() => setImgErr(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
+            )}
+          </div>
+          {visitor.isOnline && (
+            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-bold text-neutral-900 text-sm truncate">
+              {visitor.name}{visitor.age ? `, ${visitor.age}` : ''}
+            </h3>
+            {visitor.isVerified && <span className="text-blue-500 text-xs">✓</span>}
+          </div>
+          {visitor.profession && (
+            <p className="text-xs text-neutral-500 truncate mt-0.5">{visitor.profession}</p>
+          )}
+          {visitor.location && (
+            <p className="text-xs text-neutral-400 truncate">📍 {visitor.location}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${scoreBg(visitor.matchPercent)}`}>
+              {visitor.matchPercent}% match
+            </span>
+            <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+              <Eye size={10} /> {visitor.viewedAgo}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <button
+            onClick={onLike}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+              isLiked
+                ? 'bg-primary-gradient text-white'
+                : 'border border-primary-700 text-primary-700 hover:bg-primary-50'
+            }`}
+          >
+            <Heart size={12} className={isLiked ? 'fill-white' : ''} />
+            {isLiked ? 'Liked' : 'Like Back'}
+          </button>
+          <a
+            href={`/profile/${visitor.userId}`}
+            className="px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-xl text-xs font-semibold hover:border-primary-700/40 hover:text-primary-700 transition-colors text-center"
+          >
+            View Profile
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function VisitorsPage() {
+  const [visitors, setVisitors]     = useState<Visitor[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [page, setPage]             = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal]           = useState(0);
+  const [liked, setLiked]           = useState<Set<string>>(new Set());
+
+  const fetchVisitors = useCallback(async (pg: number) => {
+    const auth = getAuthFromStorage();
+    if (!auth) { setError('Please log in.'); setLoading(false); return; }
+
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch(`/api/visitors?page=${pg}&limit=20`, {
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || 'Failed');
+      setVisitors((prev) => pg === 1 ? json.data.visitors : [...prev, ...json.data.visitors]);
+      setTotal(json.data.total);
+      setTotalPages(json.data.totalPages ?? 1);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load visitors');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchVisitors(1); }, [fetchVisitors]);
+
+  const handleLike = async (visitor: Visitor) => {
+    setLiked((prev) => {
+      const s = new Set(prev);
+      s.has(visitor.userId) ? s.delete(visitor.userId) : s.add(visitor.userId);
+      return s;
+    });
+    if (liked.has(visitor.userId)) return;
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    try {
+      await fetch('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ targetUserId: visitor.userId }),
+      });
+    } catch { /* non-fatal */ }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-neutral-900">Profile Visitors</h1>
-          <p className="text-sm text-neutral-500 mt-0.5">{VISITORS.length} people viewed your profile recently</p>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            {total > 0 ? `${total} people viewed your profile` : 'See who viewed your profile'}
+          </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-          <span>🔥</span>
-          <span className="text-sm font-semibold text-amber-700">15 views today</span>
-        </div>
+        {total > 0 && (
+          <div className="bg-primary-50 border border-primary-200 rounded-xl px-3 py-2 text-center">
+            <p className="text-lg font-bold text-primary-700">{total}</p>
+            <p className="text-[10px] text-primary-600 font-medium">Visitors</p>
+          </div>
+        )}
       </div>
 
-      {/* Premium Prompt */}
-      <div className="bg-premium-gradient rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="text-white">
-          <div className="flex items-center gap-2 mb-1">
-            <span>👑</span>
-            <span className="font-bold">Unlock All Visitors</span>
-          </div>
-          <p className="text-white/70 text-sm">Upgrade to Premium to see who viewed your profile in the last 30 days</p>
+      {/* Error */}
+      {error && (
+        <div className="text-center py-16">
+          <p className="font-medium text-neutral-600">{error}</p>
         </div>
-        <a href="/premium" className="px-5 py-2.5 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-sm hover:opacity-90 transition-opacity whitespace-nowrap">
-          Upgrade Now
-        </a>
-      </div>
+      )}
 
-      {/* Visitors Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {VISITORS.map((visitor) => (
-          <div key={visitor.id} className={`bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden transition-all hover:shadow-card-hover ${(visitor as any).isPremium ? 'relative' : ''}`}>
-            {(visitor as any).isPremium && (
-              <div className="absolute inset-0 z-10 backdrop-blur-md bg-white/50 flex flex-col items-center justify-center gap-3 rounded-2xl">
-                <span className="text-4xl">👑</span>
-                <p className="text-sm font-semibold text-neutral-700">Premium Feature</p>
-                <a href="/premium" className="px-4 py-2 bg-gold-gradient text-neutral-900 font-bold rounded-xl text-xs">Unlock Profile</a>
-              </div>
-            )}
-            <div className="flex items-center gap-4 p-4">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-primary-100 flex-shrink-0">
-                {visitor.photo ? (
-                  <img src={visitor.photo} alt={visitor.name} className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                ) : <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="font-semibold text-neutral-900 text-sm truncate">{visitor.name}</h3>
-                  {visitor.isVerified && <span className="text-blue-500 text-xs">✅</span>}
-                </div>
-                <p className="text-xs text-neutral-500 truncate">{visitor.profession}, {visitor.age}</p>
-                <p className="text-xs text-neutral-400">📍 {visitor.location}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${visitor.matchPercent >= 90 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {visitor.matchPercent}% match
-                  </span>
-                  <span className="text-[10px] text-neutral-400">{visitor.time}</span>
-                </div>
-              </div>
-            </div>
-            <div className="px-4 pb-4 flex gap-2">
-              <button onClick={() => setLiked((s) => { const n = new Set(s); n.has(visitor.id) ? n.delete(visitor.id) : n.add(visitor.id); return n; })}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${liked.has(visitor.id) ? 'bg-primary-gradient text-white' : 'border border-primary-700 text-primary-700 hover:bg-primary-50'}`}>
-                {liked.has(visitor.id) ? '❤️ Liked' : '🤍 Like Back'}
-              </button>
-              <button className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90">
-                View Profile
-              </button>
-            </div>
+      {/* Skeleton */}
+      {loading && visitors.length === 0 && (
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {/* List */}
+      {!error && (
+        <>
+          <div className="space-y-3">
+            {visitors.map((v) => (
+              <VisitorCard
+                key={v.id}
+                visitor={v}
+                isLiked={liked.has(v.userId)}
+                onLike={() => handleLike(v)}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+
+          {/* Empty state */}
+          {!loading && visitors.length === 0 && (
+            <div className="text-center py-24">
+              <div className="text-5xl mb-4">👀</div>
+              <h2 className="font-bold text-neutral-700 text-lg">No visitors yet</h2>
+              <p className="text-sm text-neutral-400 mt-1.5 max-w-xs mx-auto">
+                Complete your profile to attract more visitors. A strong profile with a photo gets 5× more views.
+              </p>
+              <a
+                href="/edit-profile"
+                className="inline-block mt-4 px-6 py-2.5 bg-primary-gradient text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Complete Profile
+              </a>
+            </div>
+          )}
+
+          {/* Load more */}
+          {!loading && page < totalPages && (
+            <div className="text-center">
+              <button
+                onClick={() => { const next = page + 1; setPage(next); fetchVisitors(next); }}
+                className="px-6 py-3 border border-primary-700 text-primary-700 font-semibold rounded-xl hover:bg-primary-50 transition-colors"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+
+          {!loading && visitors.length > 0 && (
+            <p className="text-center text-xs text-neutral-400">
+              Showing {visitors.length} of {total} visitors
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

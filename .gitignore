@@ -27,6 +27,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Prisma local database
+/prisma/*.db
+/prisma/*.db-journal
+
 # IDE
 .vscode
 .idea

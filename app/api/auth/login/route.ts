@@ -1,39 +1,72 @@
 /**
- * Authentication API Routes
+ * POST /api/auth/login — password-based login.
+ * Accepts either an email or a 10-digit phone number as `identifier`.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { validatePhone } from '@/lib/validation';
+import bcrypt from 'bcryptjs';
+import { prisma } from '@/lib/db';
+import { signAccessToken, signRefreshToken } from '@/lib/jwt';
+import { loginCredentialsSchema } from '@/lib/validation';
 
-// POST /api/auth/login - Send OTP
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { phone } = body;
+    const parsed = loginCredentialsSchema.safeParse(body);
 
-    if (!validatePhone(phone)) {
+    if (!parsed.success) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'INVALID_PHONE',
-            message: 'Invalid phone number',
+            code: 'VALIDATION_ERROR',
+            message: parsed.error.errors[0]?.message || 'Invalid login details',
           },
         },
         { status: 400 }
       );
     }
 
-    // TODO: Integrate with Twilio to send OTP
-    // const otp = generateOTP();
-    // await sendOTP(phone, otp);
-    // Store OTP in cache with 10-minute expiry
+    const { identifier, password } = parsed.data;
+    const normalized = identifier.trim();
+
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ email: normalized.toLowerCase() }, { phone: normalized }] },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Incorrect email/phone or password' } },
+        { status: 401 }
+      );
+    }
+
+    // Guard against accounts that haven't completed signup yet
+    if (!user.passwordHash || user.passwordHash === 'NOT_SET') {
+      return NextResponse.json(
+        { success: false, error: { code: 'ACCOUNT_INCOMPLETE', message: 'Please complete your account setup by verifying your mobile number.' } },
+        { status: 400 }
+      );
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Incorrect email/phone or password' } },
+        { status: 401 }
+      );
+    }
+
+    const token = signAccessToken(user.id);
+    const refreshToken = signRefreshToken(user.id);
 
     return NextResponse.json({
       success: true,
       data: {
-        otp_sent: true,
-        expires_in: 600,
+        token,
+        refreshToken,
+        userId: user.id,
+        expiresIn: 24 * 60 * 60,
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -43,13 +76,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'SERVER_ERROR',
-          message: 'Failed to send OTP',
-        },
-      },
+      { success: false, error: { code: 'SERVER_ERROR', message: 'Failed to log in' } },
       { status: 500 }
     );
   }
