@@ -11,7 +11,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { signAccessToken, signRefreshToken, verifyPhoneVerifyToken } from '@/lib/jwt';
-import { sendWelcomeEmail } from '@/lib/email';
 import { z } from 'zod';
 
 const bodySchema = z.object({
@@ -72,11 +71,6 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       data: { passwordHash, onboardingStep: 'profile_wizard' },
     });
-
-    // Fire-and-forget welcome email
-    if (user.email && !user.email.endsWith('@pending.vivaah')) {
-      sendWelcomeEmail(user.email, user.fullName).catch(() => {});
-    }
 
     const token = signAccessToken(userId);
     const refreshToken = signRefreshToken(userId);

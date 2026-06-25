@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
 import { messageSchema } from '@/lib/validation';
-import { getIO } from '@/lib/socket-server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,15 +48,6 @@ export async function POST(req: NextRequest) {
 
     const message = await prisma.message.create({
       data: { conversationId: conversation.id, senderId: userId, text: content },
-    });
-
-    // Broadcast to all clients in this conversation room (real-time delivery)
-    getIO()?.to(`conv:${conversation.id}`).emit('new_message', {
-      id:             message.id,
-      conversationId: conversation.id,
-      text:           message.text,
-      senderId:       userId,
-      time:           message.createdAt.toISOString(),
     });
 
     return NextResponse.json({
