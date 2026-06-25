@@ -7,8 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const userId = getUserIdFromRequest(req);
     if (!userId) {
       return NextResponse.json(
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       );
     }
 
-    const conversation = await prisma.conversation.findUnique({ where: { id: params.id } });
+    const conversation = await prisma.conversation.findUnique({ where: { id } });
     if (!conversation || (conversation.userAId !== userId && conversation.userBId !== userId)) {
       return NextResponse.json(
         { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } },
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const messages = await prisma.message.findMany({
-      where: { conversationId: params.id },
+      where: { conversationId: id },
       orderBy: { createdAt: 'asc' },
     });
 

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { registerInitSchema } from '@/lib/validation';
+import { sendOtpSms } from '@/lib/sms';
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,11 +88,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.otpCode.create({ data: { phone, code, expiresAt } });
 
-    // No live SMS — OTP is visible in the terminal / dev server logs
-    console.log(`\n========================================`);
-    console.log(`  OTP for ${phone}: ${code}`);
-    console.log(`  Expires: ${expiresAt.toISOString()}`);
-    console.log(`========================================\n`);
+    await sendOtpSms(phone, code);
 
     const isDev = process.env.NODE_ENV === 'development';
 

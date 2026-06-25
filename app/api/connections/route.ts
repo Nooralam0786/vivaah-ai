@@ -26,11 +26,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const [sentLikes, receivedLikes, matches] = await Promise.all([
+    const [sentLikes, receivedLikes, matches, passesGiven] = await Promise.all([
       prisma.like.findMany({ where: { fromUserId: userId }, include: { toUser: { include: { profile: true } } } }),
       prisma.like.findMany({ where: { toUserId: userId }, include: { fromUser: { include: { profile: true } } } }),
       prisma.match.findMany({ where: { userAId: userId } }),
+      prisma.pass.findMany({ where: { fromUserId: userId }, select: { toUserId: true } }),
     ]);
+
+    const declinedIds = new Set(passesGiven.map((p) => p.toUserId));
 
     const matchPercentByUser = new Map(matches.map((m) => [m.userBId, m.matchPercent]));
     const sentToIds = new Set(sentLikes.map((l) => l.toUserId));
@@ -60,6 +63,7 @@ export async function GET(req: NextRequest) {
 
     for (const like of receivedLikes) {
       if (sentToIds.has(like.fromUserId)) continue; // already represented above as Accepted
+      if (declinedIds.has(like.fromUserId)) continue; // user declined this interest
       connections.push({
         id: like.id,
         userId: like.fromUserId,

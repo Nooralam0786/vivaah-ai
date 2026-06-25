@@ -20,36 +20,90 @@ export default function ForgotPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+  const [resetToken, setResetToken] = useState('');
+  const [devOtp, setDevOtp] = useState('');
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
+  const startResendTimer = () => {
     setResendTimer(60);
-    setStage('otp');
     const interval = setInterval(() => {
       setResendTimer((t) => { if (t <= 1) { clearInterval(interval); return 0; } return t - 1; });
     }, 1000);
   };
 
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error?.message || 'Failed to send OTP. Please try again.');
+        return;
+      }
+      if (json.data?.devOtp) setDevOtp(json.data.devOtp);
+      startResendTimer();
+      setStage('otp');
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setStage('reset');
+    try {
+      const res = await fetch('/api/auth/verify-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otp.join('') }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error?.message || 'Invalid OTP. Please try again.');
+        return;
+      }
+      setResetToken(json.data.resetToken);
+      setStage('reset');
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword || newPassword.length < 8) return;
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setStage('done');
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resetToken}` },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error?.message || 'Failed to reset password. Please try again.');
+        return;
+      }
+      setStage('done');
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpInput = (index: number, value: string) => {
@@ -63,7 +117,7 @@ export default function ForgotPasswordPage() {
   };
 
   const stageConfig = {
-    email: { icon: '🔐', title: 'Forgot Password?', desc: "No worries! Enter your email and we'll send you a reset link." },
+    email: { icon: '🔐', title: 'Forgot Password?', desc: "No worries! Enter your email and we'll send you a reset code." },
     otp: { icon: '📧', title: 'Enter OTP', desc: `We've sent a 6-digit code to ${email}` },
     reset: { icon: '🔑', title: 'Set New Password', desc: 'Choose a strong password for your account.' },
     done: { icon: '🎉', title: 'Password Reset!', desc: 'Your password has been updated successfully.' },
@@ -108,6 +162,7 @@ export default function ForgotPasswordPage() {
                   placeholder="name@example.com" required
                   className="w-full px-4 py-3 rounded-xl border border-vivaah-border bg-vivaah-bg text-sm outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700" />
               </div>
+              {error && <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
               <button type="submit" disabled={loading || !email}
                 className="w-full py-3 bg-primary-gradient text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                 {loading ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Sending...</> : 'Send Reset Code →'}
@@ -128,12 +183,18 @@ export default function ForgotPasswordPage() {
                       className="w-12 h-14 text-center text-xl font-bold border border-vivaah-border rounded-xl outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700 bg-vivaah-bg" />
                   ))}
                 </div>
+                {devOtp && (
+                  <p className="mt-3 text-center text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg py-2">
+                    Dev mode OTP: <strong>{devOtp}</strong>
+                  </p>
+                )}
               </div>
               <div className="text-center text-sm text-neutral-500">
                 {resendTimer > 0
                   ? <span>Resend code in <span className="font-semibold text-primary-700">{resendTimer}s</span></span>
-                  : <button type="button" onClick={() => handleEmailSubmit({ preventDefault: () => {} } as any)} className="font-semibold text-primary-700 hover:underline">Resend Code</button>}
+                  : <button type="button" onClick={() => handleEmailSubmit({ preventDefault: () => {} } as React.FormEvent)} className="font-semibold text-primary-700 hover:underline">Resend Code</button>}
               </div>
+              {error && <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
               <button type="submit" disabled={loading || otp.some((d) => !d)}
                 className="w-full py-3 bg-primary-gradient text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                 {loading ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Verifying...</> : 'Verify OTP →'}
@@ -177,6 +238,7 @@ export default function ForgotPasswordPage() {
                   </p>
                 </div>
               )}
+              {error && <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
               <button type="submit" disabled={loading || !newPassword || newPassword !== confirmPassword || newPassword.length < 8}
                 className="w-full py-3 bg-primary-gradient text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                 {loading ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Updating...</> : 'Reset Password →'}
@@ -187,7 +249,7 @@ export default function ForgotPasswordPage() {
           {/* Done Stage */}
           {stage === 'done' && (
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-4xl mx-auto animate-bounce-soft">✅</div>
+              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-4xl mx-auto">✅</div>
               <p className="text-neutral-600 text-sm">You can now sign in with your new password.</p>
               <button onClick={() => router.push('/login')}
                 className="w-full py-3 bg-primary-gradient text-white font-semibold rounded-xl hover:opacity-90 transition-all">
