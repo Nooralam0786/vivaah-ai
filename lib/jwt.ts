@@ -55,19 +55,3 @@ export function verifyPhoneVerifyToken(token: string): { userId: string } | null
     return null;
   }
 }
-
-/** Issues a short-lived (15 min) token after OTP verification, authorising a password reset. */
-export function signResetToken(userId: string): string {
-  return jwt.sign({ userId, type: 'password_reset' }, JWT_SECRET, { expiresIn: '15m' });
-}
-
-/** Verifies a password-reset token. Returns the userId or null. */
-export function verifyResetToken(token: string): { userId: string } | null {
-  try {
-    const payload = jwt.verify(token, JWT_SECRET) as { userId: string; type: string };
-    if (payload.type !== 'password_reset') return null;
-    return { userId: payload.userId };
-  } catch {
-    return null;
-  }
-}

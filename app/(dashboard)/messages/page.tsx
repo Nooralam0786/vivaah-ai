@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Send, Phone, Video, ArrowLeft, Search, Plus } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
-import { getSocket, disconnectSocket } from '@/lib/socket-client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,14 +22,6 @@ interface ChatMessage {
   id: string;
   text: string;
   sender: 'me' | 'them';
-  time: string;
-}
-
-interface SocketMessage {
-  id: string;
-  conversationId: string;
-  text: string;
-  senderId: string;
   time: string;
 }
 
@@ -77,7 +68,7 @@ function ConvSkeleton() {
 
 function MessagesInner() {
   const searchParams = useSearchParams();
-  const initUserId   = searchParams.get('userId');
+  const initUserId    = searchParams.get('userId');
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId]   = useState<string | null>(null);
@@ -88,92 +79,13 @@ function MessagesInner() {
   const [loadingConvs, setLoadingConvs]   = useState(true);
   const [loadingMsgs, setLoadingMsgs]     = useState(false);
   const [sending, setSending]             = useState(false);
-  const [isTyping, setIsTyping]           = useState(false);   // partner is typing
-  const [connected, setConnected]         = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_error, setError]               = useState<string | null>(null);
-
+  const [_error, setError]                = useState<string | null>(null);
   const messagesEndRef  = useRef<HTMLDivElement>(null);
   const textareaRef     = useRef<HTMLTextAreaElement>(null);
-  const typingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeConvIdRef = useRef<string | null>(null);
+  const pollRef         = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const auth = getAuthFromStorage();
-
-  // Keep ref in sync so socket callbacks always see latest value
-  useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
-
-  // ── Socket setup ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!auth) return;
-
-    const socket = getSocket(auth.accessToken);
-
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
-
-    socket.on('new_message', (msg: SocketMessage) => {
-      const currentConvId = activeConvIdRef.current;
-
-      setMessages((prev) => {
-        const existing = prev[msg.conversationId] ?? [];
-        // Deduplicate — optimistic message may already be present
-        if (existing.some((m) => m.id === msg.id)) return prev;
-
-        const isMine = msg.senderId === auth.userId;
-        const newMsg: ChatMessage = {
-          id:     msg.id,
-          text:   msg.text,
-          sender: isMine ? 'me' : 'them',
-          time:   msg.time,
-        };
-        return { ...prev, [msg.conversationId]: [...existing, newMsg] };
-      });
-
-      // Update conversation list preview
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === msg.conversationId
-            ? { ...c, lastMsg: msg.text, time: msg.time, unread: c.id === currentConvId ? 0 : c.unread + 1 }
-            : c,
-        ),
-      );
-    });
-
-    socket.on('user_typing', () => {
-      setIsTyping(true);
-    });
-
-    socket.on('user_stop_typing', () => {
-      setIsTyping(false);
-    });
-
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('new_message');
-      socket.off('user_typing');
-      socket.off('user_stop_typing');
-      disconnectSocket();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Join / leave conversation rooms ────────────────────────────────────────
-  useEffect(() => {
-    if (!auth) return;
-    const socket = getSocket(auth.accessToken);
-
-    if (activeConvId) {
-      socket.emit('join_conversation', activeConvId);
-      setIsTyping(false);
-    }
-
-    return () => {
-      if (activeConvId) socket.emit('leave_conversation', activeConvId);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConvId]);
 
   // ── Fetch conversation list ─────────────────────────────────────────────────
   const fetchConversations = useCallback(async () => {
@@ -188,16 +100,16 @@ function MessagesInner() {
   }, [auth]);
 
   // ── Fetch messages for a conversation ──────────────────────────────────────
-  const fetchMessages = useCallback(async (convId: string) => {
+  const fetchMessages = useCallback(async (convId: string, silent = false) => {
     if (!auth) return;
-    setLoadingMsgs(true);
+    if (!silent) setLoadingMsgs(true);
     try {
       const res  = await fetch(`/api/chat/conversations/${convId}/messages`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
       const json = await res.json();
       if (!json.success) return;
       setMessages((prev) => ({ ...prev, [convId]: json.data }));
     } finally {
-      setLoadingMsgs(false);
+      if (!silent) setLoadingMsgs(false);
     }
   }, [auth]);
 
@@ -210,20 +122,25 @@ function MessagesInner() {
       if (!convs || convs.length === 0) return;
 
       if (initUserId) {
+        // Open conversation with specific user if initiated from a profile
         const match = convs.find((c) => c.userId === initUserId);
         if (match) { setActiveConvId(match.id); return; }
       }
+      // Default: open first conversation
       setActiveConvId(convs[0].id);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Handle ?userId= param ──────────────────────────────────────────────────
+  // ── Handle ?userId= param — fetch their info if no existing conversation ───
   useEffect(() => {
-    if (!initUserId || !auth || loadingConvs) return;
+    if (!initUserId || !auth) return;
+    // Check after conversations loaded
+    if (loadingConvs) return;
     const match = conversations.find((c) => c.userId === initUserId);
     if (match) { setActiveConvId(match.id); return; }
 
+    // No conversation yet — fetch their profile to show "new chat" state
     fetch(`/api/users/${initUserId}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } })
       .then((r) => r.json())
       .then((json) => {
@@ -244,11 +161,19 @@ function MessagesInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId]);
 
+  // ── Polling: refresh active conversation every 5s ──────────────────────────
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (!activeConvId) return;
+    pollRef.current = setInterval(() => fetchMessages(activeConvId, true), 5000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [activeConvId, fetchMessages]);
+
   // ── Auto-scroll ────────────────────────────────────────────────────────────
   const activeMessages = activeConvId ? (messages[activeConvId] ?? []) : [];
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMessages.length, isTyping]);
+  }, [activeMessages.length]);
 
   // ── Auto-resize textarea ───────────────────────────────────────────────────
   useEffect(() => {
@@ -257,43 +182,27 @@ function MessagesInner() {
     textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
   }, [text]);
 
-  // ── Typing emit ────────────────────────────────────────────────────────────
-  const emitTyping = useCallback(() => {
-    if (!auth || !activeConvId) return;
-    const socket = getSocket(auth.accessToken);
-    socket.emit('typing', { convId: activeConvId });
-
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
-      socket.emit('stop_typing', { convId: activeConvId });
-    }, 1500);
-  }, [auth, activeConvId]);
-
   // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending || !auth) return;
 
+    // Determine target user
     const activeConv = conversations.find((c) => c.id === activeConvId);
     const toUserId   = activeConv?.userId ?? pendingUser?.userId;
     if (!toUserId) return;
 
-    // Stop typing indicator
-    if (activeConvId) {
-      getSocket(auth.accessToken).emit('stop_typing', { convId: activeConvId });
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    }
-
     setText('');
     setSending(true);
 
-    // Optimistic update
+    // Optimistic message
     const optimisticId  = `local-${Date.now()}`;
     const optimisticMsg: ChatMessage = { id: optimisticId, text: trimmed, sender: 'me', time: 'Just now' };
 
     if (activeConvId) {
       setMessages((prev) => ({ ...prev, [activeConvId]: [...(prev[activeConvId] ?? []), optimisticMsg] }));
     } else {
+      // New conversation — temp key
       setMessages((prev) => ({ ...prev, __pending__: [...(prev.__pending__ ?? []), optimisticMsg] }));
     }
 
@@ -309,30 +218,32 @@ function MessagesInner() {
         const newConvId = json.data.conversationId;
 
         if (!activeConvId) {
+          // First message — conversation was just created
           setActiveConvId(newConvId);
           setPendingUser(null);
           setMessages((prev) => {
             const pending = prev.__pending__ ?? [];
+            // Replace optimistic with real message
             const real: ChatMessage = { id: json.data.id, text: json.data.text, sender: 'me', time: json.data.time };
             const updated = pending.filter((m) => m.id !== optimisticId).concat(real);
             const { __pending__: _, ...rest } = prev;
             return { ...rest, [newConvId]: updated };
           });
         } else {
-          // Replace optimistic with confirmed message (socket may have already added it — deduplicate)
-          setMessages((prev) => {
-            const existing = prev[activeConvId] ?? [];
-            const withoutOptimistic = existing.filter((m) => m.id !== optimisticId);
-            if (withoutOptimistic.some((m) => m.id === json.data.id)) return { ...prev, [activeConvId]: withoutOptimistic };
-            const real: ChatMessage = { id: json.data.id, text: json.data.text, sender: 'me', time: json.data.time };
-            return { ...prev, [activeConvId]: [...withoutOptimistic, real] };
-          });
+          // Replace optimistic with real message
+          setMessages((prev) => ({
+            ...prev,
+            [activeConvId]: (prev[activeConvId] ?? []).map((m) =>
+              m.id === optimisticId ? { id: json.data.id, text: json.data.text, sender: 'me', time: json.data.time } : m,
+            ),
+          }));
         }
 
+        // Refresh conversation list so "last message" updates
         fetchConversations();
       }
     } catch {
-      // Optimistic message stays visible
+      // Optimistic message stays so user sees their text
     } finally {
       setSending(false);
     }
@@ -342,6 +253,7 @@ function MessagesInner() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // Active conversation data
   const activeConv    = conversations.find((c) => c.id === activeConvId);
   const chatPartner   = activeConv ?? (pendingUser ? { ...pendingUser, isOnline: false, lastMsg: '', time: '', unread: 0, id: '' } : null);
   const displayMessages = activeConvId ? activeMessages : (messages.__pending__ ?? []);
@@ -358,19 +270,14 @@ function MessagesInner() {
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 120px)', minHeight: '540px' }}>
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h1 className="text-xl font-bold text-neutral-900">Messages</h1>
-        <div className={`flex items-center gap-1.5 text-xs font-medium ${connected ? 'text-green-500' : 'text-neutral-400'}`}>
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400 animate-pulse' : 'bg-neutral-300'}`} />
-          {connected ? 'Live' : 'Connecting…'}
-        </div>
-      </div>
+      <h1 className="text-xl font-bold text-neutral-900 mb-4 flex-shrink-0">Messages</h1>
 
       <div className="flex flex-1 bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden min-h-0">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
         <div className={`${activeConvId || pendingUser ? 'hidden sm:flex' : 'flex'} w-full sm:w-72 lg:w-80 flex-col border-r border-vivaah-border flex-shrink-0`}>
 
+          {/* Search */}
           <div className="p-3 border-b border-vivaah-border">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -384,6 +291,7 @@ function MessagesInner() {
             </div>
           </div>
 
+          {/* List */}
           <div className="flex-1 overflow-y-auto">
             {loadingConvs && Array.from({ length: 4 }).map((_, i) => <ConvSkeleton key={i} />)}
 
@@ -395,6 +303,7 @@ function MessagesInner() {
               </div>
             )}
 
+            {/* Pending new chat */}
             {pendingUser && (
               <button
                 onClick={() => { setActiveConvId(null); }}
@@ -473,8 +382,8 @@ function MessagesInner() {
                 <a href={`/profile/${chatPartner.userId}`} className="font-semibold text-neutral-900 text-sm hover:text-primary-700 transition-colors">
                   {chatPartner.name}
                 </a>
-                <p className={`text-xs ${isTyping ? 'text-primary-600 font-medium' : chatPartner.isOnline ? 'text-green-500' : 'text-neutral-400'}`}>
-                  {isTyping ? 'typing…' : chatPartner.isOnline ? '● Online now' : 'Offline'}
+                <p className={`text-xs ${chatPartner.isOnline ? 'text-green-500' : 'text-neutral-400'}`}>
+                  {chatPartner.isOnline ? '● Online now' : 'Offline'}
                 </p>
               </div>
 
@@ -513,6 +422,7 @@ function MessagesInner() {
                 const showAvatar = msg.sender === 'them' && (!prev || prev.sender !== 'them');
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                    {/* Other person's avatar */}
                     {msg.sender === 'them' && (
                       <div className={`w-7 h-7 rounded-full overflow-hidden bg-primary-100 flex-shrink-0 flex items-center justify-center text-sm ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
                         {chatPartner.photo
@@ -533,23 +443,6 @@ function MessagesInner() {
                   </div>
                 );
               })}
-
-              {/* Typing indicator bubble */}
-              {isTyping && (
-                <div className="flex items-end gap-2 justify-start">
-                  <div className="w-7 h-7 rounded-full overflow-hidden bg-primary-100 flex-shrink-0 flex items-center justify-center text-sm">
-                    {chatPartner.photo
-                      ? <img src={chatPartner.photo} alt="" className="w-full h-full object-cover" />
-                      : '👤'}
-                  </div>
-                  <div className="bg-white border border-vivaah-border rounded-2xl rounded-tl-sm shadow-sm px-4 py-3 flex gap-1 items-center">
-                    <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              )}
-
               <div ref={messagesEndRef} />
             </div>
 
@@ -560,7 +453,7 @@ function MessagesInner() {
                   <textarea
                     ref={textareaRef}
                     value={text}
-                    onChange={(e) => { setText(e.target.value); emitTyping(); }}
+                    onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKey}
                     placeholder={`Message ${chatPartner.name}…`}
                     rows={1}
@@ -582,6 +475,7 @@ function MessagesInner() {
             </div>
           </div>
         ) : (
+          /* Empty state — no conversation selected */
           <div className="flex-1 hidden sm:flex items-center justify-center text-center text-neutral-400">
             <div>
               <div className="text-5xl mb-4">💬</div>
@@ -598,7 +492,7 @@ function MessagesInner() {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page (wraps inner in Suspense for useSearchParams) ───────────────────────
 
 export default function MessagesPage() {
   return (
