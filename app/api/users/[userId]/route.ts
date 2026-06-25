@@ -23,9 +23,10 @@ function safeJson(str: string | null | undefined, fallback: string[] = []): stri
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId: string } },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
+    const { userId } = await params;
     const viewerId = getUserIdFromRequest(req);
     if (!viewerId) {
       return NextResponse.json(
@@ -34,7 +35,6 @@ export async function GET(
       );
     }
 
-    const { userId } = params;
     if (userId === viewerId) {
       return NextResponse.json(
         { success: false, error: { code: 'BAD_REQUEST', message: 'Use /api/users/profile for your own profile' } },

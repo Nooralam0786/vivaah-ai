@@ -7,33 +7,7 @@ import {
 } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
-
-/** Resizes/compresses an image file in the browser and returns a JPEG data URL. */
-function resizeImageToDataUrl(file: File, maxDimension = 480, quality = 0.85): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read that file'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('That file is not a valid image'));
-      img.onload = () => {
-        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Image processing is not supported in this browser'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
-}
+import { uploadPhotoToS3 } from '@/lib/upload';
 
 const TABS = [
   { id: 'Basic Info', icon: User },
@@ -252,15 +226,16 @@ export default function ProfilePage() {
 
     setPhotoError(null);
     try {
-      const dataUrl = await resizeImageToDataUrl(file, target === 'cover' ? 1000 : 480);
+      const maxDim = target === 'cover' ? 1200 : 600;
+      const publicUrl = await uploadPhotoToS3(file, auth.accessToken, maxDim);
       let patch: { photo: string } | { coverPhoto: string } | { photos: string[] };
       if (target === 'avatar') {
-        patch = { photo: dataUrl };
+        patch = { photo: publicUrl };
       } else if (target === 'cover') {
-        patch = { coverPhoto: dataUrl };
+        patch = { coverPhoto: publicUrl };
       } else {
         const nextPhotos = [...profile.photos];
-        nextPhotos[target] = dataUrl; // replaces an existing slot, or appends if target === current length
+        nextPhotos[target] = publicUrl;
         patch = { photos: nextPhotos.slice(0, 4) };
       }
 

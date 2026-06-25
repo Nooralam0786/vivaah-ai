@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { UploadCloud, X, ImagePlus, MoveRight, CheckCircle2, Camera } from 'lucide-react';
+import { uploadPhotoToS3 } from '@/lib/upload';
 
 const MAX_PHOTOS = 6;
 const MIN_PHOTOS = 1;
@@ -17,6 +18,7 @@ export default function PhotoUploadPage() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -44,20 +46,20 @@ export default function PhotoUploadPage() {
     setPhotos((p) => { URL.revokeObjectURL(p[idx].url); return p.filter((_, i) => i !== idx); });
   };
 
-  const uploadToServer = async (photos: PhotoItem[]): Promise<string[]> => {
-    // In production this would upload to S3/CloudFront.
-    // For now we use local object URLs as placeholders.
-    return photos.map((p) => p.url);
-  };
-
   const handleFinish = async () => {
     if (photos.length < MIN_PHOTOS) { setError('Please add at least 1 photo to continue'); return; }
     setSaving(true); setError('');
     try {
-      const urls = await uploadToServer(photos);
-
       const auth = JSON.parse(localStorage.getItem('vivaah_auth') || '{}');
-      const token = auth.accessToken;
+      const token: string = auth.accessToken;
+
+      const urls: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        setUploadProgress(`Uploading photo ${i + 1} of ${photos.length}…`);
+        const url = await uploadPhotoToS3(photos[i].file, token, 800);
+        urls.push(url);
+      }
+      setUploadProgress('');
 
       // Save photos to profile
       await fetch('/api/users/profile', {
@@ -75,8 +77,9 @@ export default function PhotoUploadPage() {
 
       await refreshUser();
       router.push('/dashboard');
-    } catch {
-      setError('Failed to save photos. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload photos. Please try again.');
+      setUploadProgress('');
     } finally {
       setSaving(false);
     }
@@ -196,7 +199,7 @@ export default function PhotoUploadPage() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
               ) : <MoveRight className="w-4 h-4" />}
-              {saving ? 'Finishing…' : 'Finish & Go to Dashboard'}
+              {uploadProgress || (saving ? 'Finishing…' : 'Finish & Go to Dashboard')}
             </button>
           </div>
         </div>

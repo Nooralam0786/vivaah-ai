@@ -73,8 +73,16 @@ export default function ConnectionsPage() {
     }
   };
 
-  const declineConnection = (conn: Connection) => {
+  const declineConnection = async (conn: Connection) => {
     setConnections((prev) => prev.filter((c) => c.id !== conn.id));
+    if (!auth) return;
+    try {
+      await fetch('/api/matches/pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ passedUserId: conn.userId }),
+      });
+    } catch { /* non-fatal — UI already updated */ }
   };
 
   const filtered = connections.filter((c) => activeTab === 'All' || c.status === activeTab);
