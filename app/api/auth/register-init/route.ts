@@ -12,7 +12,7 @@ import { sendOtpSms } from '@/lib/sms';
 import { otpSendLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
-  const limited = otpSendLimit(req, `register:${getIP(req)}`);
+  const limited = await otpSendLimit(req, `register:${getIP(req)}`);
   if (limited) return limited;
 
   try {

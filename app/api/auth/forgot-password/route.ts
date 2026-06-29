@@ -11,7 +11,7 @@ import { sendPasswordResetEmail } from '@/lib/email';
 import { otpSendLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
-  const limited = otpSendLimit(req, `forgot-pw:${getIP(req)}`);
+  const limited = await otpSendLimit(req, `forgot-pw:${getIP(req)}`);
   if (limited) return limited;
 
   try {

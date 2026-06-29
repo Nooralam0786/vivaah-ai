@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
+import { isE2EEncrypted } from '@/lib/encryption';
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
         name:     other.fullName,
         photo:    other.profile?.photo ?? null,
         isOnline: other.profile?.isOnline ?? false,
-        lastMsg:  last?.text ?? '',
+        lastMsg:  last ? (isE2EEncrypted(last.text) ? '🔒 Encrypted message' : last.text) : '',
         time:     (last?.createdAt ?? c.createdAt).toISOString(),
         unread:   unreadCounts[i],
       };

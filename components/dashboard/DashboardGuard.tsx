@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardSidebar from '@/components/dashboard/Sidebar';
 import DashboardNavbar from '@/components/dashboard/Navbar';
+import { useFCM } from '@/hooks/useFCM';
+import { getAuthFromStorage } from '@/lib/auth';
 
 const ONBOARDING_ROUTES: Record<string, string> = {
   verify_otp: '/verify-otp',
@@ -16,6 +18,10 @@ const ONBOARDING_ROUTES: Record<string, string> = {
 export default function DashboardGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
+
+  // Register FCM push notification token once authenticated
+  const auth = getAuthFromStorage();
+  useFCM(auth?.accessToken ?? null);
 
   useEffect(() => {
     if (isLoading) return;

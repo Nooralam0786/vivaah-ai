@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Compass, Heart, MessageSquare, Link2,
-  Eye, Bookmark, Users, User, Crown, Settings, HelpCircle, ShieldCheck, LayoutGrid, type LucideIcon,
+  Eye, Bookmark, Users, User, Crown, Settings, HelpCircle, ShieldCheck, LayoutGrid, Sparkles, Zap, Gift, Star, type LucideIcon,
 } from 'lucide-react';
 
 const ADMIN_EMAILS = ['arun@techotd.com'];
@@ -14,7 +14,11 @@ const ADMIN_EMAILS = ['arun@techotd.com'];
 const navItems: { href: string; label: string; Icon: LucideIcon; badge?: string }[] = [
   { href: '/dashboard',       label: 'Dashboard',       Icon: LayoutDashboard },
   { href: '/discover',        label: 'Discover',        Icon: Compass },
+  { href: '/top-picks',       label: 'Top Picks',       Icon: Sparkles, badge: 'AI' },
   { href: '/matches',         label: 'Matches',         Icon: Heart },
+  { href: '/boost',           label: 'Boost Profile',   Icon: Zap,  badge: '₹99' },
+  { href: '/referral',        label: 'Invite & Earn',   Icon: Gift, badge: 'FREE' },
+  { href: '/submit-story',    label: 'Share Your Story', Icon: Star },
   { href: '/messages',        label: 'Messages',        Icon: MessageSquare },
   { href: '/connections',     label: 'Connections',     Icon: Link2 },
   { href: '/visitors',        label: 'Visitors',        Icon: Eye },
@@ -75,7 +79,12 @@ export default function DashboardSidebar() {
                 />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && !isActive && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                    item.badge === 'AI'  ? 'bg-[#D4AF37]/20 text-[#8B6914]' :
+                    item.badge === '₹99'  ? 'bg-orange-100 text-orange-700' :
+                    item.badge === 'FREE' ? 'bg-green-100 text-green-700'  :
+                    'bg-green-100 text-green-700'
+                  }`}>
                     {item.badge}
                   </span>
                 )}

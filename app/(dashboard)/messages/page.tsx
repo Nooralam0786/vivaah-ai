@@ -2,9 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, Phone, Video, ArrowLeft, Search, Plus } from 'lucide-react';
+import { Send, Phone, Video, ArrowLeft, Search, Plus, Lock } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
 import { getSocket, disconnectSocket } from '@/lib/socket-client';
+import { useWebRTC } from '@/hooks/useWebRTC';
+import CallModal from '@/components/call/CallModal';
+import {
+  getOrCreateKeyPair,
+  encryptMsg,
+  decryptMsg,
+  isE2EEncrypted,
+  type E2EKeyPair,
+} from '@/lib/encryption';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,7 +107,65 @@ function MessagesInner() {
   const typingTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeConvIdRef = useRef<string | null>(null);
 
+  // E2E encryption — my keypair + per-partner public key cache
+  const myKeyPairRef       = useRef<E2EKeyPair | null>(null);
+  const partnerPubKeyCache = useRef<Record<string, string | null>>({}); // userId → base64 pubkey or null
+
   const auth = getAuthFromStorage();
+
+  // Socket ref for WebRTC
+  const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
+  useEffect(() => {
+    if (auth) socketRef.current = getSocket(auth.accessToken);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── E2E init: generate/load keypair + register public key with server ──────
+  useEffect(() => {
+    if (!auth) return;
+    const kp = getOrCreateKeyPair(auth.userId);
+    myKeyPairRef.current = kp;
+
+    // Register public key with server (idempotent — server upserts)
+    fetch('/api/users/public-key', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+      body:    JSON.stringify({ publicKey: kp.publicKey }),
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Fetch (and cache) a partner's E2E public key. Returns null if they haven't set one. */
+  const getPartnerPubKey = useCallback(async (partnerId: string): Promise<string | null> => {
+    if (partnerId in partnerPubKeyCache.current) return partnerPubKeyCache.current[partnerId];
+    if (!auth) return null;
+    try {
+      const res  = await fetch(`/api/users/public-key?userId=${partnerId}`, {
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      const json = await res.json();
+      const key  = json.success ? (json.data.publicKey ?? null) : null;
+      partnerPubKeyCache.current[partnerId] = key;
+      return key;
+    } catch {
+      return null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Decrypt a single message text. Returns plaintext (or original if not encrypted / decryption fails). */
+  const tryDecrypt = useCallback((text: string, partnerPubKey: string | null): string => {
+    if (!isE2EEncrypted(text)) return text;
+    if (!partnerPubKey || !myKeyPairRef.current) return '🔒 Encrypted message';
+    return decryptMsg(text, partnerPubKey, myKeyPairRef.current.secretKey) ?? '🔒 Encrypted message';
+  }, []);
+
+  const {
+    session: callSession, localStream, remoteStream,
+    micOn, camOn,
+    startCall, answerCall, rejectCall, endCall,
+    toggleMic, toggleCam,
+  } = useWebRTC(socketRef.current);
 
   // Keep ref in sync so socket callbacks always see latest value
   useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
@@ -129,21 +196,28 @@ function MessagesInner() {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
-    socket.on('new_message', (msg: SocketMessage) => {
+    socket.on('new_message', async (msg: SocketMessage) => {
       const currentConvId = activeConvIdRef.current;
       const isMine        = msg.senderId === auth.userId;
+
+      // Decrypt the incoming message text
+      const conv          = conversations.find((c) => c.id === msg.conversationId);
+      const partnerId     = conv ? conv.userId : (isMine ? undefined : msg.senderId);
+      const partnerPubKey = partnerId ? await getPartnerPubKey(partnerId) : null;
+      const plainText     = tryDecrypt(msg.text, partnerPubKey);
+      const displayText   = isE2EEncrypted(msg.text) ? '🔒 Encrypted message' : plainText;
 
       setMessages((prev) => {
         const existing = prev[msg.conversationId] ?? [];
         if (existing.some((m) => m.id === msg.id)) return prev;
-        const newMsg: ChatMessage = { id: msg.id, text: msg.text, sender: isMine ? 'me' : 'them', time: msg.time };
+        const newMsg: ChatMessage = { id: msg.id, text: plainText, sender: isMine ? 'me' : 'them', time: msg.time };
         return { ...prev, [msg.conversationId]: [...existing, newMsg] };
       });
 
       setConversations((prev) =>
         prev.map((c) =>
           c.id === msg.conversationId
-            ? { ...c, lastMsg: msg.text, time: msg.time, unread: c.id === currentConvId ? 0 : c.unread + 1 }
+            ? { ...c, lastMsg: displayText, time: msg.time, unread: c.id === currentConvId ? 0 : c.unread + 1 }
             : c,
         ),
       );
@@ -151,9 +225,11 @@ function MessagesInner() {
       /* Browser notification for messages from others when tab is not active */
       if (!isMine && msg.conversationId !== currentConvId) {
         if ('Notification' in window && Notification.permission === 'granted') {
-          const conv = conversations.find((c) => c.id === msg.conversationId);
+          const notifBody = plainText === '🔒 Encrypted message'
+            ? '🔒 Encrypted message'
+            : (plainText.length > 60 ? plainText.slice(0, 60) + '…' : plainText);
           new Notification(`New message from ${conv?.name ?? 'Someone'}`, {
-            body: msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text,
+            body: notifBody,
             icon: conv?.photo ?? '/favicon.ico',
             tag:  msg.conversationId,
           });
@@ -213,19 +289,27 @@ function MessagesInner() {
     } catch { return []; }
   }, [auth]);
 
-  // ── Fetch messages for a conversation ──────────────────────────────────────
-  const fetchMessages = useCallback(async (convId: string) => {
+  // ── Fetch messages for a conversation (with decryption) ───────────────────
+  const fetchMessages = useCallback(async (convId: string, partnerId?: string) => {
     if (!auth) return;
     setLoadingMsgs(true);
     try {
       const res  = await fetch(`/api/chat/conversations/${convId}/messages`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
       const json = await res.json();
       if (!json.success) return;
-      setMessages((prev) => ({ ...prev, [convId]: json.data }));
+
+      // Decrypt all messages with partner's public key
+      const partnerPubKey = partnerId ? await getPartnerPubKey(partnerId) : null;
+      const decrypted = (json.data as ChatMessage[]).map((m) => ({
+        ...m,
+        text: tryDecrypt(m.text, partnerPubKey),
+      }));
+      setMessages((prev) => ({ ...prev, [convId]: decrypted }));
     } finally {
       setLoadingMsgs(false);
     }
-  }, [auth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, getPartnerPubKey, tryDecrypt]);
 
   // ── Initial load ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -266,7 +350,8 @@ function MessagesInner() {
   useEffect(() => {
     if (!activeConvId) return;
     setPendingUser(null);
-    if (!messages[activeConvId]) fetchMessages(activeConvId);
+    const conv = conversations.find((c) => c.id === activeConvId);
+    if (!messages[activeConvId]) fetchMessages(activeConvId, conv?.userId);
     markAsRead(activeConvId);
     /* Clear unread badge in conversation list */
     setConversations((prev) => prev.map((c) => c.id === activeConvId ? { ...c, unread: 0 } : c));
@@ -316,7 +401,13 @@ function MessagesInner() {
     setText('');
     setSending(true);
 
-    // Optimistic update
+    // Encrypt the message if partner has an E2E public key
+    const partnerPubKey    = await getPartnerPubKey(toUserId);
+    const contentToSend    = (partnerPubKey && myKeyPairRef.current)
+      ? encryptMsg(trimmed, partnerPubKey, myKeyPairRef.current.secretKey)
+      : trimmed;
+
+    // Optimistic update always shows plaintext
     const optimisticId  = `local-${Date.now()}`;
     const optimisticMsg: ChatMessage = { id: optimisticId, text: trimmed, sender: 'me', time: 'Just now' };
 
@@ -330,7 +421,7 @@ function MessagesInner() {
       const res  = await fetch('/api/chat/messages', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
-        body:    JSON.stringify({ content: trimmed, toUserId }),
+        body:    JSON.stringify({ content: contentToSend, toUserId }),
       });
       const json = await res.json();
 
@@ -386,6 +477,19 @@ function MessagesInner() {
   }
 
   return (
+    <>
+    <CallModal
+      session={callSession}
+      localStream={localStream}
+      remoteStream={remoteStream}
+      micOn={micOn}
+      camOn={camOn}
+      onAnswer={answerCall}
+      onReject={rejectCall}
+      onEnd={endCall}
+      onToggleMic={toggleMic}
+      onToggleCam={toggleCam}
+    />
     <div className="max-w-7xl mx-auto animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 120px)', minHeight: '540px' }}>
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h1 className="text-xl font-bold text-neutral-900">Messages</h1>
@@ -499,19 +603,32 @@ function MessagesInner() {
               </a>
 
               <div className="flex-1 min-w-0">
-                <a href={`/profile/${chatPartner.userId}`} className="font-semibold text-neutral-900 text-sm hover:text-primary-700 transition-colors">
-                  {chatPartner.name}
-                </a>
+                <div className="flex items-center gap-2">
+                  <a href={`/profile/${chatPartner.userId}`} className="font-semibold text-neutral-900 text-sm hover:text-primary-700 transition-colors">
+                    {chatPartner.name}
+                  </a>
+                  {partnerPubKeyCache.current[chatPartner.userId] && (
+                    <span className="flex items-center gap-0.5 text-[9px] text-green-600 font-medium bg-green-50 border border-green-200 rounded-full px-1.5 py-0.5">
+                      <Lock size={8} /> E2E Encrypted
+                    </span>
+                  )}
+                </div>
                 <p className={`text-xs ${isTyping ? 'text-primary-600 font-medium' : chatPartner.isOnline ? 'text-green-500' : 'text-neutral-400'}`}>
                   {isTyping ? 'typing…' : chatPartner.isOnline ? '● Online now' : 'Offline'}
                 </p>
               </div>
 
               <div className="flex gap-1.5 ml-auto">
-                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
+                <button
+                  onClick={() => chatPartner && startCall(chatPartner.userId, chatPartner.name, chatPartner.photo ?? null, 'audio')}
+                  title="Audio call"
+                  className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
                   <Phone size={15} />
                 </button>
-                <button className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
+                <button
+                  onClick={() => chatPartner && startCall(chatPartner.userId, chatPartner.name, chatPartner.photo ?? null, 'video')}
+                  title="Video call"
+                  className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
                   <Video size={15} />
                 </button>
                 <a href={`/profile/${chatPartner.userId}`} className="w-9 h-9 rounded-xl bg-vivaah-bg border border-vivaah-border flex items-center justify-center text-neutral-500 hover:text-primary-700 hover:border-primary-700/40 transition-colors">
@@ -557,7 +674,10 @@ function MessagesInner() {
                       }`}>
                         {msg.text}
                       </div>
-                      <p className="text-[10px] text-neutral-400 mt-0.5 px-1">{msgTime(msg.time)}</p>
+                      <p className="text-[10px] text-neutral-400 mt-0.5 px-1 flex items-center gap-1">
+                        <Lock size={9} className="opacity-60" />
+                        {msgTime(msg.time)}
+                      </p>
                     </div>
                   </div>
                 );
@@ -624,6 +744,7 @@ function MessagesInner() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

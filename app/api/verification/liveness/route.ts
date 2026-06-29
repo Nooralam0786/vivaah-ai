@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rl = sensitiveLimit(req, `liveness:${userId}`);
+  const rl = await sensitiveLimit(req, `liveness:${userId}`);
   if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));

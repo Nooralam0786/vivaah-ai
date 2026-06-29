@@ -14,6 +14,7 @@ import {
   type CurrentUserContext,
   type CandidateProfile,
 } from '@/services/matching.engine';
+import { createViewNotification } from '@/lib/notifications';
 
 function safeJson(str: string | null | undefined, fallback: string[] = []): string[] {
   if (!str) return fallback;
@@ -61,10 +62,11 @@ export async function GET(
       );
     }
 
-    // Record view — fire and forget (don't block response)
-    prisma.profileView.create({
-      data: { viewerId, profileId: userId },
-    }).catch(() => {/* non-critical */});
+    // Record view + notify — fire and forget
+    const viewerName  = viewer?.fullName ?? 'Someone';
+    const viewerPhoto = viewer?.profile?.photo ?? null;
+    prisma.profileView.create({ data: { viewerId, profileId: userId } }).catch(() => {});
+    createViewNotification(userId, viewerId, viewerName, viewerPhoto).catch(() => {});
 
     // Calculate match score
     const vp = viewer?.profile;

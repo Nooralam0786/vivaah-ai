@@ -16,6 +16,10 @@ model User {
   phoneVerified  Boolean  @default(false)
   onboardingStep String   @default("complete")
   gender         String?
+  referralCode   String   @unique @default(cuid())
+  referredBy     String?
+  e2ePublicKey   String?  // X25519 public key for E2E message encryption (base64)
+  fcmToken       String?  // Firebase Cloud Messaging token for push notifications
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -29,6 +33,9 @@ model User {
   likesReceived  Like[]    @relation("LikesReceived")
   passesGiven    Pass[]    @relation("PassesGiven")
   passesReceived Pass[]    @relation("PassesReceived")
+
+  reportsMade     UserReport[] @relation("ReportsMade")
+  reportsReceived UserReport[] @relation("ReportsReceived")
   matchesA       Match[]   @relation("MatchUserA")
   matchesB       Match[]   @relation("MatchUserB")
   bookmarksMade      Bookmark[] @relation("BookmarkOwner")
@@ -90,9 +97,10 @@ model Profile {
   drinkingHabit  String? // never | occasionally | regularly
   dietPreference String? // vegetarian | non-vegetarian | vegan | eggetarian
 
-  isVerified   Boolean   @default(false)
-  isOnline     Boolean   @default(false)
-  lastActiveAt DateTime?
+  isVerified    Boolean   @default(false)
+  isOnline      Boolean   @default(false)
+  lastActiveAt  DateTime?
+  boostExpiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,6 +253,87 @@ model Verification {
   verifiedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // like | match | message | view | referral | boost
+  title      String
+  body       String
+  fromUserId String?
+  fromName   String?
+  fromPhoto  String?
+  link       String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model ReferralReward {
+  id          String   @id @default(cuid())
+  referrerId  String
+  refereeId   String
+  status      String   @default("pending") // pending | rewarded
+  rewardDays  Int      @default(30)
+  createdAt   DateTime @default(now())
+  rewardedAt  DateTime?
+
+  @@unique([referrerId, refereeId])
+  @@index([referrerId])
+}
+
+model SuccessStory {
+  id            String   @id @default(cuid())
+  userId        String
+  partnerName   String
+  story         String
+  marriageDate  String?
+  city          String?
+  photo         String?
+  status        String   @default("pending") // pending | approved | rejected
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
+model UserReport {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reportedId  String
+  reason      String   // harassment | fake_profile | spam | inappropriate_photos | scam | other
+  description String?
+  status      String   @default("pending") // pending | reviewed | actioned | dismissed
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reporter User @relation("ReportsMade",     fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("ReportsReceived", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([reportedId])
+  @@unique([reporterId, reportedId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  // admin or user id
+  actorName  String?
+  action     String   // signup | login | upgrade | verify | ban | unban | delete | report | approve_story | reject_story
+  targetId   String?
+  targetName String?
+  meta       String?  // JSON string with extra context
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([actorId])
 }
 
 model ContactMessage {

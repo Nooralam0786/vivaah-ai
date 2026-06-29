@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rl = uploadLimit(req, `upload:${userId}`);
+  const rl = await uploadLimit(req, `upload:${userId}`);
   if (rl) return rl;
 
   let formData: FormData;

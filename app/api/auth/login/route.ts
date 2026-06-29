@@ -11,7 +11,7 @@ import { loginCredentialsSchema } from '@/lib/validation';
 import { loginLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
-  const limited = loginLimit(req, `login:${getIP(req)}`);
+  const limited = await loginLimit(req, `login:${getIP(req)}`);
   if (limited) return limited;
 
   try {

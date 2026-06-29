@@ -13,7 +13,7 @@ import { verifyPhoneOtpSchema } from '@/lib/validation';
 import { loginLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
-  const limited = loginLimit(req, `verify-phone:${getIP(req)}`);
+  const limited = await loginLimit(req, `verify-phone:${getIP(req)}`);
   if (limited) return limited;
 
   try {

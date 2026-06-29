@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAdminOrReject } from '@/lib/admin-auth';
+import { writeAuditLog } from '@/lib/audit';
 import { z } from 'zod';
 
 const actionSchema = z.object({
@@ -56,15 +57,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { action } = parsed.data;
 
+  const ip = req.headers.get('x-forwarded-for') ?? undefined;
+
   try {
+    const target = await prisma.user.findUnique({ where: { id }, select: { fullName: true } });
+
     if (action === 'delete') {
       await prisma.user.delete({ where: { id } });
+      writeAuditLog({ action: 'delete_user', actorId: auth.userId, actorName: auth.fullName, targetId: id, targetName: target?.fullName, ip });
       return NextResponse.json({ success: true, data: { message: 'User deleted' } });
     }
 
     // suspend / activate — toggle onboardingStep as a suspension flag
     const onboardingStep = action === 'suspend' ? 'suspended' : 'complete';
     await prisma.user.update({ where: { id }, data: { onboardingStep } });
+
+    writeAuditLog({
+      action:     action === 'suspend' ? 'ban' : 'unban',
+      actorId:    auth.userId,
+      actorName:  auth.fullName,
+      targetId:   id,
+      targetName: target?.fullName,
+      ip,
+    });
 
     return NextResponse.json({
       success: true,

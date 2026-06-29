@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAdminOrReject } from '@/lib/admin-auth';
+import { writeAuditLog } from '@/lib/audit';
 import { z } from 'zod';
 
 const reviewSchema = z.object({
@@ -54,6 +55,8 @@ export async function PATCH(req: NextRequest) {
 
   const { userId, action } = parsed.data;
 
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { fullName: true } });
+
   await prisma.verification.upsert({
     where:  { userId },
     update: {
@@ -73,6 +76,16 @@ export async function PATCH(req: NextRequest) {
       data:  { isVerified: true },
     });
   }
+
+  writeAuditLog({
+    action:     'verify',
+    actorId:    auth.userId,
+    actorName:  auth.fullName,
+    targetId:   userId,
+    targetName: target?.fullName,
+    meta:       { action },
+    ip:         req.headers.get('x-forwarded-for') ?? undefined,
+  });
 
   return NextResponse.json({
     success: true,

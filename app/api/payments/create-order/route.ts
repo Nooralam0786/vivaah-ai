@@ -16,7 +16,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   /* Rate limit */
-  const rl = writeApiLimit(req, `create-order:${req.headers.get('x-forwarded-for') ?? 'local'}`);
+  const rl = await writeApiLimit(req, `create-order:${req.headers.get('x-forwarded-for') ?? 'local'}`);
   if (rl) return rl;
 
   /* Auth */

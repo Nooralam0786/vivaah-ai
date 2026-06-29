@@ -13,11 +13,13 @@ import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
 import {
   calculateMatchScore,
+  collaborativeBoost,
   calculateAge,
   type CurrentUserContext,
   type CandidateProfile,
 } from '@/services/matching.engine';
 import { readApiLimit } from '@/lib/api-rate-limit';
+import { cacheGet, cacheSet, CacheKeys, CacheTTL } from '@/lib/cache';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -50,11 +52,18 @@ export async function GET(req: NextRequest) {
     const page     = Math.max(1, parseInt(searchParams.get('page')  ?? '1',  10));
     const limit    = Math.min(40, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)));
 
-    const rl = readApiLimit(req, `discover:${userId}`);
+    const rl = await readApiLimit(req, `discover:${userId}`);
     if (rl) return rl;
 
-    // ── Fetch current user (with subscription + free-limit fields) + all candidates ──
-    const [currentUser, allUsers] = await Promise.all([
+    // ── Cache: serve cached results for default (no-filter) page-1 browse ───────
+    const isDefaultQuery = !search && !religion && !state && fMinAge === null && fMaxAge === null && page === 1;
+    if (isDefaultQuery) {
+      const cached = await cacheGet<object>(CacheKeys.matches(userId));
+      if (cached) return NextResponse.json(cached);
+    }
+
+    // ── Fetch current user + all candidates + like graph for collaborative filtering ──
+    const [currentUser, allUsers, myLikers, allLikes] = await Promise.all([
       prisma.user.findUnique({
         where:   { id: userId },
         include: {
@@ -68,7 +77,20 @@ export async function GET(req: NextRequest) {
         include: { profile: true },
         orderBy: { updatedAt: 'desc' },
       }),
+      // Who liked the current user?
+      prisma.like.findMany({ where: { toUserId: userId }, select: { fromUserId: true } }),
+      // All likes in the system (for collaborative filtering)
+      prisma.like.findMany({ select: { fromUserId: true, toUserId: true } }),
     ]);
+
+    // Build map: candidateId → Set<likerIds>
+    const candidateLikers = new Map<string, string[]>();
+    for (const like of allLikes) {
+      const arr = candidateLikers.get(like.toUserId) ?? [];
+      arr.push(like.fromUserId);
+      candidateLikers.set(like.toUserId, arr);
+    }
+    const myLikerIds = myLikers.map((l) => l.fromUserId);
 
     // ── Freemium check ────────────────────────────────────────────────────────
     const isPaid = (currentUser?.subscriptions?.length ?? 0) > 0;
@@ -142,7 +164,8 @@ export async function GET(req: NextRequest) {
           maritalStatus: p.maritalStatus ?? null,
           height: p.height ?? null, annualIncome: p.annualIncome ?? null,
         };
-        const { score } = calculateMatchScore(userCtx, cp);
+        const boost = collaborativeBoost(myLikerIds, candidateLikers.get(u.id) ?? []);
+        const { score } = calculateMatchScore(userCtx, cp, boost);
         return { u, p, cp, score };
       })
       .filter(({ u, cp }) => {
@@ -163,7 +186,16 @@ export async function GET(req: NextRequest) {
         }
         return true;
       })
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        // Boosted profiles float to the top
+        const now = new Date();
+        const aBoost = (a.p as Record<string, unknown>).boostExpiresAt as Date | null;
+        const bBoost = (b.p as Record<string, unknown>).boostExpiresAt as Date | null;
+        const aIsBoosted = aBoost && new Date(aBoost) > now ? 1 : 0;
+        const bIsBoosted = bBoost && new Date(bBoost) > now ? 1 : 0;
+        if (bIsBoosted !== aIsBoosted) return bIsBoosted - aIsBoosted;
+        return b.score - a.score;
+      });
 
     // ── Paginate ──────────────────────────────────────────────────────────────
     const total      = results.length;
@@ -189,24 +221,29 @@ export async function GET(req: NextRequest) {
       }).catch(() => { /* non-critical */ });
     }
 
-    const profiles = pageData.map(({ u, cp, score }) => ({
-      id:           `disc_${u.id}`,
-      userId:       u.id,
-      name:         u.fullName,
-      age:          calculateAge(cp.dob),
-      profession:   cp.occupation,
-      location:     [cp.city, cp.state].filter(Boolean).join(', ') || null,
-      religion:     cp.religion,
-      caste:        cp.caste,
-      height:       cp.height,
-      income:       cp.annualIncome,
-      matchPercent: score,
-      isOnline:     cp.isOnline,
-      isVerified:   cp.isVerified,
-      photo:        cp.photo,
-    }));
+    const now = new Date();
+    const profiles = pageData.map(({ u, p, cp, score }) => {
+      const boostExp = (p as Record<string, unknown>).boostExpiresAt as Date | null;
+      return {
+        id:           `disc_${u.id}`,
+        userId:       u.id,
+        name:         u.fullName,
+        age:          calculateAge(cp.dob),
+        profession:   cp.occupation,
+        location:     [cp.city, cp.state].filter(Boolean).join(', ') || null,
+        religion:     cp.religion,
+        caste:        cp.caste,
+        height:       cp.height,
+        income:       cp.annualIncome,
+        matchPercent: score,
+        isOnline:     cp.isOnline,
+        isVerified:   cp.isVerified,
+        isBoosted:    boostExp ? new Date(boostExp) > now : false,
+        photo:        cp.photo,
+      };
+    });
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       data: {
         profiles,
@@ -222,7 +259,14 @@ export async function GET(req: NextRequest) {
         },
       },
       meta: { timestamp: new Date().toISOString() },
-    });
+    };
+
+    // Cache the default (no-filter) page-1 result for this user
+    if (isDefaultQuery) {
+      cacheSet(CacheKeys.matches(userId), responseData, CacheTTL.MATCHES).catch(() => {});
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('[GET /api/discover]', error);
     return NextResponse.json(

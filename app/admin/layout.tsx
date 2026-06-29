@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Users, User, ShieldCheck, UserX,
-  Heart, MessageSquare, Zap, Eye,
+  Heart, MessageSquare, Zap, Eye, Flag,
   FileText, Star, Image, BookOpen, MessageCircle,
   CreditCard, ArrowRightLeft, Wallet, RotateCcw,
   TrendingUp, Settings, Shield, Activity,
@@ -29,6 +29,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/profiles',      label: 'Profiles',      Icon: User       },
       { href: '/admin/verifications', label: 'Verifications', Icon: ShieldCheck},
       { href: '/admin/blocked',       label: 'Blocked Users', Icon: UserX      },
+      { href: '/admin/reports',       label: 'Reports',       Icon: Flag       },
     ],
   },
   {
@@ -93,6 +94,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/settings':         'System Settings',
   '/admin/admins':           'Admin Management',
   '/admin/logs':             'Activity Logs',
+  '/admin/reports':          'User Reports',
 };
 
 /* ─── Auth guard ─────────────────────────────────────────────── */

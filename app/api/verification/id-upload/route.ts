@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rl = sensitiveLimit(req, `id-upload:${userId}`);
+  const rl = await sensitiveLimit(req, `id-upload:${userId}`);
   if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));

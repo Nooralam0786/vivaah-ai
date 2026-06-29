@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { signupSchema } from '@/lib/validation';
 import { sendWelcomeEmail } from '@/lib/email';
+import { writeAuditLog } from '@/lib/audit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { fullName, email, phone, password } = parsed.data;
+    const refCode = body.referralCode as string | undefined;
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { phone }] },
@@ -66,6 +68,16 @@ export async function POST(req: NextRequest) {
 
     /* Fire-and-forget — don't block response */
     sendWelcomeEmail(email, fullName).catch(() => {});
+    writeAuditLog({ action: 'signup', actorId: user.id, actorName: fullName, ip: req.headers.get('x-forwarded-for') ?? undefined });
+
+    /* Apply referral if code provided */
+    if (refCode) {
+      fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'}/api/referral`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ referralCode: refCode, newUserId: user.id }),
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

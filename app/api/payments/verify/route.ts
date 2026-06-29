@@ -19,6 +19,7 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  try {
   /* Auth */
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED' } }, { status: 401 });
@@ -94,6 +95,14 @@ export async function POST(req: NextRequest) {
     ).catch(() => {});
   }
 
+  /* Trigger referral reward if this user was referred */
+  if (user?.referredBy) {
+    prisma.referralReward.updateMany({
+      where:  { referrerId: user.referredBy, refereeId: payload.userId, status: 'pending' },
+      data:   { status: 'rewarded', rewardedAt: new Date() },
+    }).catch(() => {});
+  }
+
   return NextResponse.json({
     success: true,
     data: {
@@ -102,4 +111,11 @@ export async function POST(req: NextRequest) {
       expiresAt: expiresAt.toISOString(),
     },
   });
+  } catch (error) {
+    console.error('Payment verify error:', error);
+    return NextResponse.json(
+      { success: false, error: { code: 'SERVER_ERROR', message: 'Payment verification failed' } },
+      { status: 500 },
+    );
+  }
 }
