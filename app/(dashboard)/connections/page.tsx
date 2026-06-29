@@ -40,9 +40,8 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const auth = getAuthFromStorage();
-
   useEffect(() => {
+    const auth = getAuthFromStorage();
     if (!auth) {
       setLoading(false);
       setError('Please log in to see your connections.');
@@ -56,10 +55,10 @@ export default function ConnectionsPage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load connections'))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const acceptConnection = async (conn: Connection) => {
+    const auth = getAuthFromStorage();
     if (!auth) return;
     setConnections((prev) => prev.map((c) => (c.id === conn.id ? { ...c, status: 'Accepted' } : c)));
     try {
@@ -75,6 +74,7 @@ export default function ConnectionsPage() {
 
   const declineConnection = async (conn: Connection) => {
     setConnections((prev) => prev.filter((c) => c.id !== conn.id));
+    const auth = getAuthFromStorage();
     if (!auth) return;
     try {
       await fetch('/api/matches/pass', {
@@ -95,7 +95,7 @@ export default function ConnectionsPage() {
     return (
       <div className="max-w-7xl mx-auto text-center py-16 text-neutral-400">
         <p className="font-medium text-neutral-600">{error}</p>
-        {!auth && <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>}
+        <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>
       </div>
     );
   }

@@ -3,6 +3,9 @@
  * Browse ALL complete profiles (not AI-filtered like /api/matches).
  * Supports: search (name/location/profession), religion, state, ageMin, ageMax.
  * Sorted: recently active first, with a basic compatibility score attached.
+ *
+ * Freemium limit: free-tier users may view at most FREE_DAILY_LIMIT distinct
+ * profiles per calendar day (UTC). Paid users have no restriction.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,11 +17,18 @@ import {
   type CurrentUserContext,
   type CandidateProfile,
 } from '@/services/matching.engine';
+import { readApiLimit } from '@/lib/api-rate-limit';
+
+const FREE_DAILY_LIMIT = 5;
 
 function safeJson(str: string | null | undefined, fallback: string[] = []): string[] {
   if (!str) return fallback;
   try { const v = JSON.parse(str); return Array.isArray(v) ? v : fallback; }
   catch { return fallback; }
+}
+
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
 }
 
 export async function GET(req: NextRequest) {
@@ -40,23 +50,52 @@ export async function GET(req: NextRequest) {
     const page     = Math.max(1, parseInt(searchParams.get('page')  ?? '1',  10));
     const limit    = Math.min(40, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)));
 
-    // Fetch current user context for scoring
+    const rl = readApiLimit(req, `discover:${userId}`);
+    if (rl) return rl;
+
+    // ── Fetch current user (with subscription + free-limit fields) + all candidates ──
     const [currentUser, allUsers] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: userId },
-        include: { profile: true, preference: true },
+        where:   { id: userId },
+        include: {
+          profile:       true,
+          preference:    true,
+          subscriptions: { where: { status: 'active' }, take: 1, orderBy: { createdAt: 'desc' } },
+        },
       }),
       prisma.user.findMany({
-        where: {
-          id:      { not: userId },
-          profile: { isNot: null },
-        },
+        where:   { id: { not: userId }, profile: { isNot: null } },
         include: { profile: true },
         orderBy: { updatedAt: 'desc' },
       }),
     ]);
 
-    // Build user context
+    // ── Freemium check ────────────────────────────────────────────────────────
+    const isPaid = (currentUser?.subscriptions?.length ?? 0) > 0;
+    const today  = todayUTC();
+
+    // How many profiles has this free user already seen today?
+    const rawUsed = currentUser?.freeMatchesDate === today
+      ? (currentUser?.freeMatchesUsed ?? 0)
+      : 0;
+
+    if (!isPaid && rawUsed >= FREE_DAILY_LIMIT) {
+      // Limit already reached — return empty payload with metadata
+      return NextResponse.json({
+        success: true,
+        data: {
+          profiles:   [],
+          total:      0,
+          page,
+          limit,
+          totalPages: 0,
+          freeLimit: { total: FREE_DAILY_LIMIT, used: rawUsed, remaining: 0, isLimited: true },
+        },
+        meta: { timestamp: new Date().toISOString() },
+      });
+    }
+
+    // ── Build user context ────────────────────────────────────────────────────
     const vp  = currentUser?.profile;
     const vpr = currentUser?.preference;
     const userCtx: CurrentUserContext = {
@@ -83,7 +122,7 @@ export async function GET(req: NextRequest) {
       } : null,
     };
 
-    // Score + filter
+    // ── Score + filter ────────────────────────────────────────────────────────
     const results = allUsers
       .map((u) => {
         const p = u.profile!;
@@ -106,7 +145,6 @@ export async function GET(req: NextRequest) {
         const { score } = calculateMatchScore(userCtx, cp);
         return { u, p, cp, score };
       })
-      // Search filter (client-side since SQLite has no full-text)
       .filter(({ u, cp }) => {
         if (search) {
           const haystack = [u.fullName, cp.city, cp.state, cp.occupation, cp.religion]
@@ -127,11 +165,31 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => b.score - a.score);
 
+    // ── Paginate ──────────────────────────────────────────────────────────────
     const total      = results.length;
     const totalPages = Math.ceil(total / limit);
-    const page_data  = results.slice((page - 1) * limit, page * limit);
+    let pageData     = results.slice((page - 1) * limit, page * limit);
 
-    const profiles = page_data.map(({ u, cp, score }) => ({
+    // ── Apply free-tier cap on returned profiles ──────────────────────────────
+    let newFreeUsed    = rawUsed;
+    let freeIsLimited  = false;
+
+    if (!isPaid) {
+      const remaining = FREE_DAILY_LIMIT - rawUsed;
+      if (pageData.length > remaining) {
+        pageData = pageData.slice(0, remaining);
+        freeIsLimited = true;
+      }
+      newFreeUsed = rawUsed + pageData.length;
+
+      // Persist updated count (fire-and-forget, non-blocking)
+      prisma.user.update({
+        where: { id: userId },
+        data: { freeMatchesUsed: newFreeUsed, freeMatchesDate: today },
+      }).catch(() => { /* non-critical */ });
+    }
+
+    const profiles = pageData.map(({ u, cp, score }) => ({
       id:           `disc_${u.id}`,
       userId:       u.id,
       name:         u.fullName,
@@ -150,8 +208,20 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data:    { profiles, total, page, limit, totalPages },
-      meta:    { timestamp: new Date().toISOString() },
+      data: {
+        profiles,
+        total:      isPaid ? total : Math.min(total, FREE_DAILY_LIMIT),
+        page,
+        limit,
+        totalPages: isPaid ? totalPages : 1,
+        freeLimit: isPaid ? null : {
+          total:     FREE_DAILY_LIMIT,
+          used:      newFreeUsed,
+          remaining: Math.max(0, FREE_DAILY_LIMIT - newFreeUsed),
+          isLimited: freeIsLimited,
+        },
+      },
+      meta: { timestamp: new Date().toISOString() },
     });
   } catch (error) {
     console.error('[GET /api/discover]', error);

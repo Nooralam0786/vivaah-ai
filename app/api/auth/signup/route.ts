@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { signupSchema } from '@/lib/validation';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest) {
 
     const token = signAccessToken(user.id);
     const refreshToken = signRefreshToken(user.id);
+
+    /* Fire-and-forget — don't block response */
+    sendWelcomeEmail(email, fullName).catch(() => {});
 
     return NextResponse.json({
       success: true,

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal, X, Bookmark, Heart, Eye } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Bookmark, Heart, Eye, Crown, Lock, Zap, ArrowRight } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
+import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ interface DiscoverProfile {
   isVerified: boolean;
   photo: string | null;
 }
+
+interface FreeLimit { total: number; used: number; remaining: number; isLimited: boolean; }
 
 interface Filters { religion: string; state: string; minAge: string; maxAge: string; }
 const DEFAULT_FILTERS: Filters = { religion: '', state: '', minAge: '', maxAge: '' };
@@ -145,6 +148,80 @@ function ProfileCard({
   );
 }
 
+// ─── Upgrade Wall Card ────────────────────────────────────────────────────────
+
+function UpgradeWallCard() {
+  return (
+    <div className="col-span-full">
+      <div className="bg-gradient-to-br from-primary-50 to-amber-50 border-2 border-dashed border-primary-200 rounded-2xl p-8 text-center">
+        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
+          <Lock className="w-7 h-7 text-primary-700" />
+        </div>
+        <h3 className="text-lg font-extrabold text-neutral-900 mb-1">Daily Limit Reached</h3>
+        <p className="text-sm text-neutral-500 mb-5 max-w-xs mx-auto">
+          Free plan lets you view 5 profiles per day. Upgrade to Gold to see unlimited profiles.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/select-plan"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-gradient text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity shadow"
+          >
+            <Crown className="w-4 h-4" />
+            Upgrade to Gold — ₹499/mo
+          </Link>
+          <Link
+            href="/select-plan"
+            className="inline-flex items-center gap-2 px-5 py-2.5 border border-amber-400 text-amber-700 rounded-xl text-sm font-semibold hover:bg-amber-50 transition-colors"
+          >
+            <Zap className="w-4 h-4" />
+            View All Plans
+          </Link>
+        </div>
+        <p className="text-xs text-neutral-400 mt-4">Your free limit resets every day at midnight UTC</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Free Limit Banner ────────────────────────────────────────────────────────
+
+function FreeLimitBanner({ freeLimit }: { freeLimit: FreeLimit }) {
+  const pct = Math.round((freeLimit.used / freeLimit.total) * 100);
+  const isLow = freeLimit.remaining <= 2;
+  return (
+    <div className={`flex items-center justify-between gap-4 px-4 py-3 rounded-xl border text-sm ${isLow ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-100'}`}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex-shrink-0">
+          {isLow
+            ? <span className="text-lg">⚠️</span>
+            : <span className="text-lg">ℹ️</span>}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`font-semibold text-xs ${isLow ? 'text-amber-800' : 'text-blue-800'}`}>
+            {freeLimit.remaining > 0
+              ? `${freeLimit.remaining} of ${freeLimit.total} free profiles remaining today`
+              : 'Daily limit reached'}
+          </p>
+          <div className="mt-1.5 h-1.5 bg-white/70 rounded-full overflow-hidden w-36">
+            <div
+              className={`h-full rounded-full transition-all ${isLow ? 'bg-amber-500' : 'bg-blue-500'}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+      <Link
+        href="/select-plan"
+        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-primary-gradient text-white text-xs font-bold rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+      >
+        <Crown className="w-3 h-3" />
+        Upgrade
+        <ArrowRight className="w-3 h-3" />
+      </Link>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
@@ -159,6 +236,7 @@ export default function DiscoverPage() {
   const [liked, setLiked]         = useState<Set<string>>(new Set());
   const [saved, setSaved]         = useState<Set<string>>(new Set());
   const [error, setError]         = useState<string | null>(null);
+  const [freeLimit, setFreeLimit] = useState<FreeLimit | null>(null);
   const abortRef                  = useRef<AbortController | null>(null);
 
   const hasFilters = Object.values(filters).some(Boolean);
@@ -173,11 +251,11 @@ export default function DiscoverPage() {
 
     try {
       const params = new URLSearchParams({ page: String(pg), limit: '20' });
-      if (s)         params.set('search',   s);
-      if (f.religion)params.set('religion', f.religion);
-      if (f.state)   params.set('state',    f.state);
-      if (f.minAge)  params.set('minAge',   f.minAge);
-      if (f.maxAge)  params.set('maxAge',   f.maxAge);
+      if (s)          params.set('search',   s);
+      if (f.religion) params.set('religion', f.religion);
+      if (f.state)    params.set('state',    f.state);
+      if (f.minAge)   params.set('minAge',   f.minAge);
+      if (f.maxAge)   params.set('maxAge',   f.maxAge);
 
       const res  = await fetch(`/api/discover?${params}`, {
         headers: { Authorization: `Bearer ${auth.accessToken}` },
@@ -189,6 +267,7 @@ export default function DiscoverPage() {
       setProfiles(pg === 1 ? json.data.profiles : (prev: DiscoverProfile[]) => [...prev, ...json.data.profiles]);
       setTotal(json.data.total);
       setTotalPages(json.data.totalPages ?? 1);
+      if (json.data.freeLimit) setFreeLimit(json.data.freeLimit);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Failed to load profiles');
@@ -235,6 +314,7 @@ export default function DiscoverPage() {
   };
 
   const resetFilters = () => { setFilters(DEFAULT_FILTERS); setFiltersOpen(false); };
+  const isAtLimit    = freeLimit?.isLimited === true && profiles.length === 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
@@ -260,6 +340,11 @@ export default function DiscoverPage() {
           {hasFilters && <span className="w-2 h-2 bg-primary-700 rounded-full" />}
         </button>
       </div>
+
+      {/* Free limit banner (only for free users) */}
+      {freeLimit && !isAtLimit && (
+        <FreeLimitBanner freeLimit={freeLimit} />
+      )}
 
       {/* Search bar */}
       <div className="relative">
@@ -375,10 +460,22 @@ export default function DiscoverPage() {
               />
             ))}
             {loading && Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
+
+            {/* Upgrade wall — shown when limit is reached mid-grid */}
+            {!loading && freeLimit?.isLimited && profiles.length > 0 && (
+              <UpgradeWallCard />
+            )}
           </div>
 
-          {/* Empty state */}
-          {!loading && profiles.length === 0 && (
+          {/* Full-screen upgrade wall — when limit was reached before first load */}
+          {!loading && isAtLimit && (
+            <div className="py-10">
+              <UpgradeWallCard />
+            </div>
+          )}
+
+          {/* Empty state (no results, not a limit issue) */}
+          {!loading && profiles.length === 0 && !isAtLimit && (
             <div className="text-center py-20">
               <div className="text-5xl mb-3">🔍</div>
               <p className="font-medium text-neutral-600">No profiles found</p>
@@ -391,8 +488,8 @@ export default function DiscoverPage() {
             </div>
           )}
 
-          {/* Load more */}
-          {!loading && page < totalPages && (
+          {/* Load more — only for paid users */}
+          {!loading && !freeLimit && page < totalPages && (
             <div className="text-center">
               <button
                 onClick={() => { const next = page + 1; setPage(next); fetchProfiles(next, search, filters); }}
@@ -403,7 +500,7 @@ export default function DiscoverPage() {
             </div>
           )}
 
-          {!loading && profiles.length > 0 && (
+          {!loading && profiles.length > 0 && !freeLimit && (
             <p className="text-center text-xs text-neutral-400">
               Showing {profiles.length} of {total} profiles
             </p>

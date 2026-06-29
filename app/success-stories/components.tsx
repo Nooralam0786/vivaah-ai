@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import SmartSignupLink from "@/components/site/SmartSignupLink";
 import Image from "next/image";
 import type { Couple, VideoStory } from "./data";

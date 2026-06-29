@@ -1,50 +1,74 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Menu, Search, Bell, MessageSquare, ChevronDown,
-  Crown, User, Settings, HelpCircle, LogOut,
+  Crown, User, Settings, HelpCircle, LogOut, ShieldCheck,
 } from 'lucide-react';
+import { getAuthFromStorage } from '@/lib/auth';
 
 export default function DashboardNavbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifOpen,   setNotifOpen]   = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const notifRef   = useRef<HTMLDivElement>(null);
 
-  const displayName = user?.fullName || 'User';
-  const displayEmail = user?.email || '';
-  const photoUrl = user?.photo || null;
+  const displayName  = user?.fullName || 'User';
+  const displayEmail = user?.email    || '';
+  const photoUrl     = user?.photo    || null;
+  const isVerified   = (user as unknown as { isVerified?: boolean })?.isVerified ?? false;
 
-  const handleSignOut = async () => {
-    logout();
-    router.replace('/login');
+  const tier = user?.subscriptionTier ?? 'free';
+  const TIER_LABELS: Record<string, { label: string; className: string }> = {
+    free:     { label: 'Free Member',     className: 'text-neutral-400' },
+    gold:     { label: 'Gold Member',     className: 'text-amber-500'   },
+    platinum: { label: 'Platinum Member', className: 'text-blue-500'    },
+    diamond:  { label: 'Diamond Member',  className: 'text-primary-600' },
   };
+  const tierDisplay = TIER_LABELS[tier] ?? TIER_LABELS['free'];
 
+  /* ── Fetch unread count ─────────────────────────────────────────────────── */
+  const fetchUnread = useCallback(async () => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    try {
+      const res  = await fetch('/api/chat/unread', { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+      const json = await res.json();
+      if (json.success) setUnreadCount(json.data.unread);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnread();
+    /* Poll every 30s so badge stays fresh even without Socket.IO event */
+    const id = setInterval(fetchUnread, 30_000);
+    return () => clearInterval(id);
+  }, [fetchUnread]);
+
+  /* ── Close dropdowns on outside click ──────────────────────────────────── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+      if (notifRef.current   && !notifRef.current.contains(e.target as Node))   setNotifOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const notifications = [
-    { id: 1, icon: '💕', text: 'Ananya Singh liked your profile', time: '2h ago', unread: true },
-    { id: 2, icon: '💬', text: 'New message from Priya Sharma', time: '3h ago', unread: true },
-    { id: 3, icon: '👁️', text: '15 people viewed your profile', time: '1d ago', unread: false },
-  ];
+  const handleSignOut = () => { logout(); router.replace('/login'); };
+
+  const notifications: { id: number; icon: string; text: string; time: string; unread: boolean }[] = [];
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 z-20 h-14 bg-white border-b border-vivaah-border flex items-center px-4 md:px-6 gap-3 shadow-sm">
 
-      {/* Hamburger — visible on mobile only (desktop sidebar is always open) */}
+      {/* Hamburger — mobile only */}
       <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-neutral-500 hover:bg-vivaah-muted transition-colors flex-shrink-0">
         <Menu className="w-5 h-5" />
       </button>
@@ -70,10 +94,10 @@ export default function DashboardNavbar() {
       <div className="flex items-center gap-1.5">
 
         {/* Upgrade to Premium */}
-        <Link href="/premium-benefits"
+        <Link href="/upgrade"
           className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-gold-gradient text-neutral-900 text-xs font-bold rounded-full hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap">
           <Crown className="w-3.5 h-3.5" />
-          Upgrade to Premium
+          Upgrade
         </Link>
 
         {/* Notifications */}
@@ -82,9 +106,6 @@ export default function DashboardNavbar() {
             onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
             className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
             <Bell className="w-5 h-5" />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary-700 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
-              12
-            </span>
           </button>
 
           {notifOpen && (
@@ -93,7 +114,9 @@ export default function DashboardNavbar() {
                 <span className="font-semibold text-neutral-900 text-sm">Notifications</span>
                 <button className="text-xs text-primary-700 font-medium hover:underline">Mark all read</button>
               </div>
-              {notifications.map((n) => (
+              {notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-neutral-400">No notifications yet</div>
+              ) : notifications.map((n) => (
                 <div key={n.id}
                   className={`flex items-start gap-3 px-4 py-3 hover:bg-vivaah-bg cursor-pointer transition-colors ${n.unread ? 'bg-primary-50/40' : ''}`}>
                   <div className="w-8 h-8 bg-primary-50 rounded-full flex items-center justify-center text-base flex-shrink-0">{n.icon}</div>
@@ -104,19 +127,19 @@ export default function DashboardNavbar() {
                   {n.unread && <div className="w-2 h-2 bg-primary-700 rounded-full mt-1.5 flex-shrink-0" />}
                 </div>
               ))}
-              <div className="px-4 pt-2 border-t border-vivaah-border">
-                <Link href="/notifications" className="block text-center text-xs text-primary-700 font-medium py-1.5 hover:underline">
-                  View all notifications
-                </Link>
-              </div>
             </div>
           )}
         </div>
 
-        {/* Messages */}
+        {/* Messages with unread badge */}
         <Link href="/messages"
-          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
+          className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
           <MessageSquare className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[#6B1B3D] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </Link>
 
         {/* Divider */}
@@ -127,14 +150,21 @@ export default function DashboardNavbar() {
           <button
             onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-vivaah-muted transition-colors">
-            <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
-              {photoUrl
-                ? <img src={photoUrl} alt={displayName} className="w-full h-full object-cover" />
-                : displayName[0]?.toUpperCase() ?? '?'}
+            <div className="relative">
+              <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+                {photoUrl
+                  ? <img src={photoUrl} alt={displayName} className="w-full h-full object-cover" />
+                  : displayName[0]?.toUpperCase() ?? '?'}
+              </div>
+              {isVerified && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center border border-white">
+                  <ShieldCheck size={8} className="text-white" strokeWidth={3} />
+                </div>
+              )}
             </div>
             <div className="hidden md:block text-left">
               <p className="text-xs font-semibold text-neutral-900 leading-none">{displayName}</p>
-              <p className="text-[10px] text-gold-500 font-semibold leading-none mt-0.5">Premium Member</p>
+              <p className={`text-[10px] font-semibold leading-none mt-0.5 ${tierDisplay.className}`}>{tierDisplay.label}</p>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 hidden md:block transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -146,10 +176,11 @@ export default function DashboardNavbar() {
                 <p className="text-xs text-neutral-400 mt-0.5">{displayEmail}</p>
               </div>
               {[
-                { href: '/profile', label: 'View Profile', Icon: User },
-                { href: '/settings', label: 'Account Settings', Icon: Settings },
-                { href: '/premium-benefits', label: 'Premium Benefits', Icon: Crown },
-                { href: '/help', label: 'Help & Support', Icon: HelpCircle },
+                { href: '/profile',      label: 'View Profile',     Icon: User },
+                { href: '/settings',     label: 'Account Settings', Icon: Settings },
+                ...(!isVerified ? [{ href: '/verification', label: 'Get Verified ✓', Icon: ShieldCheck }] : []),
+                { href: '/upgrade',      label: 'Upgrade Plan',     Icon: Crown },
+                { href: '/help',         label: 'Help & Support',   Icon: HelpCircle },
               ].map(({ href, label, Icon }) => (
                 <Link key={href} href={href}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-600 hover:bg-vivaah-bg hover:text-primary-700 transition-colors">

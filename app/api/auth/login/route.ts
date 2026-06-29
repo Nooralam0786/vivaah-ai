@@ -8,8 +8,12 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { loginCredentialsSchema } from '@/lib/validation';
+import { loginLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = loginLimit(req, `login:${getIP(req)}`);
+  if (limited) return limited;
+
   try {
     const body = await req.json();
     const parsed = loginCredentialsSchema.safeParse(body);

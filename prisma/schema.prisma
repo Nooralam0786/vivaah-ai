@@ -1,12 +1,9 @@
-// VivaahAI — local development database (SQLite via Prisma)
-// Swapping to Postgres later only requires changing `provider` + `DATABASE_URL`.
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = env("DATABASE_PROVIDER") // "sqlite" (dev) | "postgresql" (prod)
   url      = env("DATABASE_URL")
 }
 
@@ -24,6 +21,7 @@ model User {
 
   profile         Profile?
   preference      Preference?
+  verification    Verification?
   subscriptions   Subscription[]
   contactMessages ContactMessage[]
 
@@ -42,6 +40,10 @@ model User {
 
   viewsGiven    ProfileView[] @relation("ViewsGiven")
   viewsReceived ProfileView[] @relation("ViewsReceived")
+
+  // Freemium daily match limit tracking
+  freeMatchesUsed Int    @default(0)
+  freeMatchesDate String @default("")
 }
 
 model OtpCode {
@@ -171,6 +173,9 @@ model Conversation {
   userBId   String
   createdAt DateTime @default(now())
 
+  userALastReadAt DateTime?
+  userBLastReadAt DateTime?
+
   userA User @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
   userB User @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
 
@@ -191,11 +196,16 @@ model Message {
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
-  userId    String
-  tier      String   // premium | elite
-  status    String   @default("pending") // pending | active | cancelled
-  createdAt DateTime @default(now())
+  id                 String    @id @default(cuid())
+  userId             String
+  tier               String    // free | gold | platinum | diamond
+  status             String    @default("pending") // pending | active | cancelled | failed
+  amount             Int       @default(0)         // in paise (₹499 = 49900)
+  razorpayOrderId    String?
+  razorpayPaymentId  String?
+  startedAt          DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -211,6 +221,30 @@ model ProfileView {
 
   @@index([profileId])
   @@index([viewerId])
+}
+
+model Verification {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phoneVerified  Boolean  @default(false)
+
+  idType         String?  // aadhaar | pan | passport | driving_license
+  idNumber       String?
+  idVerified     Boolean  @default(false)
+  idVerifiedAt   DateTime?
+
+  livenessStatus String   @default("not_started") // not_started | pending | approved | rejected
+  selfieUrl      String?
+  livenessAt     DateTime?
+
+  fraudScore     Int      @default(0)
+  overallStatus  String   @default("unverified") // unverified | pending | verified | rejected
+
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model ContactMessage {

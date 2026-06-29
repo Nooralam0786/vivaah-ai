@@ -103,6 +103,23 @@ function MessagesInner() {
   // Keep ref in sync so socket callbacks always see latest value
   useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
 
+  // ── Browser notification permission ───────────────────────────────────────
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ── Mark conversation as read ─────────────────────────────────────────────
+  const markAsRead = useCallback(async (convId: string) => {
+    if (!auth) return;
+    fetch(`/api/chat/conversations/${convId}/read`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${auth.accessToken}` },
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Socket setup ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!auth) return;
@@ -114,23 +131,15 @@ function MessagesInner() {
 
     socket.on('new_message', (msg: SocketMessage) => {
       const currentConvId = activeConvIdRef.current;
+      const isMine        = msg.senderId === auth.userId;
 
       setMessages((prev) => {
         const existing = prev[msg.conversationId] ?? [];
-        // Deduplicate — optimistic message may already be present
         if (existing.some((m) => m.id === msg.id)) return prev;
-
-        const isMine = msg.senderId === auth.userId;
-        const newMsg: ChatMessage = {
-          id:     msg.id,
-          text:   msg.text,
-          sender: isMine ? 'me' : 'them',
-          time:   msg.time,
-        };
+        const newMsg: ChatMessage = { id: msg.id, text: msg.text, sender: isMine ? 'me' : 'them', time: msg.time };
         return { ...prev, [msg.conversationId]: [...existing, newMsg] };
       });
 
-      // Update conversation list preview
       setConversations((prev) =>
         prev.map((c) =>
           c.id === msg.conversationId
@@ -138,6 +147,23 @@ function MessagesInner() {
             : c,
         ),
       );
+
+      /* Browser notification for messages from others when tab is not active */
+      if (!isMine && msg.conversationId !== currentConvId) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const conv = conversations.find((c) => c.id === msg.conversationId);
+          new Notification(`New message from ${conv?.name ?? 'Someone'}`, {
+            body: msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text,
+            icon: conv?.photo ?? '/favicon.ico',
+            tag:  msg.conversationId,
+          });
+        }
+      }
+
+      /* Auto-mark as read if this conversation is currently open */
+      if (msg.conversationId === currentConvId && !isMine) {
+        markAsRead(msg.conversationId);
+      }
     });
 
     socket.on('user_typing', () => {
@@ -236,11 +262,14 @@ function MessagesInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initUserId, loadingConvs]);
 
-  // ── Load messages when conversation changes ────────────────────────────────
+  // ── Load messages + mark read when conversation changes ───────────────────
   useEffect(() => {
     if (!activeConvId) return;
     setPendingUser(null);
     if (!messages[activeConvId]) fetchMessages(activeConvId);
+    markAsRead(activeConvId);
+    /* Clear unread badge in conversation list */
+    setConversations((prev) => prev.map((c) => c.id === activeConvId ? { ...c, unread: 0 } : c));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId]);
 

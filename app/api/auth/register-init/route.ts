@@ -9,8 +9,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { registerInitSchema } from '@/lib/validation';
 import { sendOtpSms } from '@/lib/sms';
+import { otpSendLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = otpSendLimit(req, `register:${getIP(req)}`);
+  if (limited) return limited;
+
   try {
     const body = await req.json();
     const parsed = registerInitSchema.safeParse(body);

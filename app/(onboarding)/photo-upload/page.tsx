@@ -68,15 +68,8 @@ export default function PhotoUploadPage() {
         body: JSON.stringify({ photos: urls, photo: urls[0] }),
       });
 
-      // Advance onboarding to complete
-      await fetch('/api/users/onboarding', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ step: 'complete' }),
-      });
-
       await refreshUser();
-      router.push('/dashboard');
+      router.push('/select-plan');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload photos. Please try again.');
       setUploadProgress('');

@@ -21,6 +21,8 @@ import {
   type CurrentUserContext,
   type CandidateProfile,
 } from '@/services/matching.engine';
+import { readApiLimit, writeApiLimit } from '@/lib/api-rate-limit';
+import { sendMatchNotificationEmail } from '@/lib/email';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +108,9 @@ export async function GET(req: NextRequest) {
         { status: 401 },
       );
     }
+
+    const rl = readApiLimit(req, `matches-get:${userId}`);
+    if (rl) return rl;
 
     const { searchParams } = new URL(req.url);
     const page      = Math.max(1, parseInt(searchParams.get('page')  ?? '1',  10));
@@ -353,6 +358,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const rl = writeApiLimit(req, `matches-like:${userId}`);
+    if (rl) return rl;
+
     const body = await req.json();
     const targetUserId: unknown = body?.targetUserId;
     if (typeof targetUserId !== 'string' || !targetUserId) {
@@ -378,6 +386,15 @@ export async function POST(req: NextRequest) {
         where: { userAId: userId, userBId: targetUserId },
         data:  { tag: 'mutual' },
       });
+    }
+
+    /* Notify the target user — fire-and-forget */
+    const [liker, target] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId },       select: { fullName: true } }),
+      prisma.user.findUnique({ where: { id: targetUserId }, select: { fullName: true, email: true } }),
+    ]);
+    if (liker && target) {
+      sendMatchNotificationEmail(target.email, target.fullName, liker.fullName, isMutual).catch(() => {});
     }
 
     return NextResponse.json({
