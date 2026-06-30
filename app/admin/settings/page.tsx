@@ -17,7 +17,7 @@ const GENERAL_FIELDS: FieldDef[] = [
   { id: 'maxMatches',   label: 'Max Free Matches',    value: '5',          type: 'number',  hint: 'Daily match limit for free-tier users'            },
   { id: 'otpExpiry',    label: 'OTP Expiry (secs)',   value: '300',        type: 'number',  hint: 'Seconds before OTP code expires (default: 300s)'  },
   { id: 'jwtExpiry',    label: 'JWT Expiry',          value: '7d',                          hint: 'Token lifetime (e.g., 7d, 24h)'                   },
-  { id: 'appUrl',       label: 'App Base URL',        value: 'https://vivaah.ai',           hint: 'Used in emails and redirects'                     },
+  { id: 'appUrl',       label: 'App Base URL',        value: 'https://vivaahai.techotd.in', hint: 'Used in emails and redirects'                     },
 ];
 
 interface Flag { id: string; label: string; desc: string; enabled: boolean }

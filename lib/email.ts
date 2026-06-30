@@ -25,7 +25,7 @@ function createTransporter() {
   });
 }
 
-const FROM = process.env.EMAIL_FROM || 'VivaahAI <noreply@vivaah.ai>';
+const FROM = process.env.EMAIL_FROM || 'VivaahAI <noreply@vivaahai.techotd.in>';
 
 export async function sendPasswordResetEmail(email: string, otp: string): Promise<void> {
   if (!isConfigured()) {
@@ -180,7 +180,7 @@ export async function sendMatchNotificationEmail(
                 <p style="margin:0 0 24px;color:#666;font-size:15px;line-height:1.6;">
                   Hi ${recipientName}, <strong style="color:#6B1B3D;">${likerName}</strong> ${isMutual ? 'and you liked each other! Start chatting now.' : 'has shown interest in your profile.'}
                 </p>
-                <a href="https://vivaah.ai/matches" style="display:inline-block;background:#6B1B3D;color:#fff;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;">
+                <a href="https://vivaahai.techotd.in/matches" style="display:inline-block;background:#6B1B3D;color:#fff;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;">
                   ${isMutual ? 'Start Chatting' : 'View Profile'}
                 </a>
               </td></tr>

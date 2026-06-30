@@ -3,7 +3,7 @@
  * Razorpay webhook — handles payment.captured and payment.failed events.
  *
  * Setup in Razorpay Dashboard:
- *   Settings → Webhooks → Add URL: https://yourdomain.com/api/payments/webhook
+ *   Settings → Webhooks → Add URL: https://vivaahai.techotd.in/api/payments/webhook
  *   Events: payment.captured, payment.failed, subscription.charged, subscription.cancelled
  *   Secret: set RAZORPAY_WEBHOOK_SECRET in .env.local
  */

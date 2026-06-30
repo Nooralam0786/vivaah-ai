@@ -224,7 +224,7 @@ TWILIO_ACCOUNT_SID=<your-sid>
 ## 📞 Support
 
 For questions or issues:
-- Email: support@vivaah.ai
+- Email: arun@techotd.com
 - Documentation: [Wiki](#)
 - Issues: GitHub Issues
 
