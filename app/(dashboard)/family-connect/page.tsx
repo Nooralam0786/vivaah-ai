@@ -20,13 +20,13 @@ export default function FamilyConnectPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-neutral-900">Family Connect</h1>
           <p className="text-sm text-neutral-500 mt-0.5">Involve your family in your matrimonial journey</p>
         </div>
         <button onClick={() => setShowInvite(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity w-full sm:w-auto flex-shrink-0">
           + Invite Member
         </button>
       </div>
@@ -44,7 +44,7 @@ export default function FamilyConnectPage() {
       <div className="space-y-3">
         {FAMILY_MEMBERS.map((member) => (
           <div key={member.id} className="bg-white rounded-2xl border border-vivaah-border shadow-card p-5">
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
               <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">
                 {member.avatar}
               </div>
@@ -54,16 +54,16 @@ export default function FamilyConnectPage() {
                   <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-full">{member.relation}</span>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_STYLES[member.status]}`}>{member.status}</span>
                 </div>
-                <p className="text-sm text-neutral-500 mt-0.5">{member.email}</p>
+                <p className="text-sm text-neutral-500 mt-0.5 truncate">{member.email}</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {member.access.map((a) => (
                     <span key={a} className="text-[11px] bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full font-medium">✓ {a}</span>
                   ))}
                 </div>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <button className="px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-lg text-xs hover:bg-vivaah-bg">Edit Access</button>
-                <button className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs hover:bg-red-50">Remove</button>
+              <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
+                <button className="flex-1 sm:flex-initial px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-lg text-xs hover:bg-vivaah-bg">Edit Access</button>
+                <button className="flex-1 sm:flex-initial px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs hover:bg-red-50">Remove</button>
               </div>
             </div>
           </div>
@@ -74,10 +74,10 @@ export default function FamilyConnectPage() {
       {showInvite && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowInvite(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-slide-up">
+          <div role="dialog" aria-modal="true" aria-label="Invite Family Member" className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-neutral-900">Invite Family Member</h3>
-              <button onClick={() => setShowInvite(false)} className="text-neutral-400 hover:text-neutral-700 text-xl">✕</button>
+              <button onClick={() => setShowInvite(false)} aria-label="Close dialog" className="text-neutral-400 hover:text-neutral-700 text-xl">✕</button>
             </div>
             <div className="space-y-4">
               <div>

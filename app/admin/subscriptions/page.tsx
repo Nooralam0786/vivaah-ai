@@ -16,9 +16,9 @@ function StatCard({ title, value, subtitle, Icon, color }: { title: string; valu
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
         <Icon className="w-5 h-5 text-white" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{title}</p>
-        <p className="text-2xl font-extrabold text-gray-900 mt-0.5">{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+        <p className="text-xl sm:text-2xl font-extrabold text-gray-900 mt-0.5 truncate">{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
         {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
       </div>
     </div>
@@ -78,11 +78,11 @@ export default function AdminSubscriptionsPage() {
     <div className="space-y-5">
 
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Plans & Pricing</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">Plans & Pricing</h1>
         <p className="text-sm text-gray-500 mt-0.5">Subscription analytics and revenue breakdown</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Revenue"    value={`₹${totalRevenue.toLocaleString('en-IN')}`} subtitle="Estimated MRR" Icon={TrendingUp} color="bg-[#6B1B3D]"  />
         <StatCard title="Paid Subscribers" value={totalPaid}  subtitle={`${convRate}% conversion`}                      Icon={Crown}      color="bg-amber-500" />
         <StatCard title="Total Users"      value={totalUsers}                                                            Icon={Users}      color="bg-blue-500"  />
@@ -129,45 +129,47 @@ export default function AdminSubscriptionsPage() {
         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
           <h3 className="text-sm font-bold text-gray-800">Plan Details</h3>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {['Plan', 'Price/mo', 'Subscribers', 'Monthly Revenue', 'Share'].map((h) => (
-                <th key={h} className="px-5 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {tiers.map((t) => {
-              const share = totalUsers > 0 ? ((t.count / totalUsers) * 100).toFixed(1) : '0.0';
-              return (
-                <tr key={t.tier} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: t.color }} />
-                      <span className="text-sm font-semibold text-gray-800">{t.label}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">
-                    {TIER_PRICE[t.tier] === 0 ? <span className="text-gray-400">Free</span> : `₹${TIER_PRICE[t.tier]?.toLocaleString('en-IN')}`}
-                  </td>
-                  <td className="px-5 py-3 text-sm font-semibold text-gray-800">{t.count.toLocaleString('en-IN')}</td>
-                  <td className="px-5 py-3 text-sm font-semibold text-gray-800">
-                    {t.revenue > 0 ? `₹${t.revenue.toLocaleString('en-IN')}` : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${share}%`, background: t.color }} />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
+            <thead>
+              <tr className="border-b border-gray-100 sticky top-0 bg-white z-10">
+                {['Plan', 'Price/mo', 'Subscribers', 'Monthly Revenue', 'Share'].map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {tiers.map((t) => {
+                const share = totalUsers > 0 ? ((t.count / totalUsers) * 100).toFixed(1) : '0.0';
+                return (
+                  <tr key={t.tier} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: t.color }} />
+                        <span className="text-sm font-semibold text-gray-800">{t.label}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{share}%</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-5 py-3 text-sm text-gray-600">
+                      {TIER_PRICE[t.tier] === 0 ? <span className="text-gray-400">Free</span> : `₹${TIER_PRICE[t.tier]?.toLocaleString('en-IN')}`}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold text-gray-800">{t.count.toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-gray-800">
+                      {t.revenue > 0 ? `₹${t.revenue.toLocaleString('en-IN')}` : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-20 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${share}%`, background: t.color }} />
+                        </div>
+                        <span className="text-xs text-gray-500">{share}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

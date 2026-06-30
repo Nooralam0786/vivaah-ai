@@ -20,18 +20,18 @@ export default function PagesPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Pages</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Pages</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage static content pages on the platform</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center flex-shrink-0">
           <BookOpen size={18} className="text-[#6B1B3D]" />
         </div>
       </div>
 
       {/* Coming Soon Banner */}
-      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-4 sm:p-6 text-white">
         <div className="flex items-center gap-3 mb-2">
           <Clock size={20} className="text-[#D4AF37]" />
           <span className="text-[#D4AF37] font-bold text-sm tracking-wide uppercase">Coming Soon</span>
@@ -46,17 +46,17 @@ export default function PagesPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden opacity-60 pointer-events-none select-none">
         <div className="divide-y divide-gray-50">
           {EXAMPLE_PAGES.map((p, i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#6B1B3D]/10 flex items-center justify-center">
+            <div key={i} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-[#6B1B3D]/10 flex items-center justify-center flex-shrink-0">
                   <BookOpen size={15} className="text-[#6B1B3D]" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{p.title}</p>
-                  <p className="text-[10px] text-gray-400 font-mono">{p.slug}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{p.title}</p>
+                  <p className="text-[10px] text-gray-400 font-mono truncate">{p.slug}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status]}`}>{p.status}</span>
                 <span className="text-[10px] text-gray-400 hidden sm:block">Updated {p.updated}</span>
                 <ExternalLink size={13} className="text-gray-300" />

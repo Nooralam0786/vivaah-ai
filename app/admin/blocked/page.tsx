@@ -74,9 +74,9 @@ export default function BlockedUsersPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Blocked Users</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Blocked Users</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} suspended accounts</p>
         </div>
         <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">
@@ -85,7 +85,7 @@ export default function BlockedUsersPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text" placeholder="Search by name or email…"
@@ -93,18 +93,68 @@ export default function BlockedUsersPage() {
           className="w-full pl-9 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#6B1B3D]/50 transition-colors shadow-sm"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40 rounded">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 animate-pulse space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-3 bg-gray-100 rounded w-2/3" />
+              </div>
+            ))
+          : users.map((u) => (
+              <div key={u.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar name={u.fullName} photo={u.photo} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{u.fullName}</p>
+                    <p className="text-[10px] text-red-400">Suspended</p>
+                    <p className="text-xs text-gray-600 truncate mt-1">{u.email}</p>
+                    <p className="text-[10px] text-gray-400">{u.phone}</p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200 capitalize">
+                        {u.subscriptionTier}
+                      </span>
+                      <span className="text-[10px] text-gray-400">{u.city ?? '—'}</span>
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => reactivate(u.id, u.fullName)}
+                      disabled={acting === u.id}
+                      className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 border border-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Reactivate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+        {!loading && users.length === 0 && (
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+            <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <UserCheck size={24} className="text-green-500" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700">No suspended users</p>
+            <p className="text-xs text-gray-400 mt-1">All accounts are in good standing.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Table (desktop/tablet) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[760px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
                 {['User', 'Contact', 'Plan', 'City', 'Suspended On', 'Action'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
@@ -152,7 +202,7 @@ export default function BlockedUsersPage() {
                           onClick={() => reactivate(u.id, u.fullName)}
                           disabled={acting === u.id}
                           title="Reactivate"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 border border-emerald-200"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 border border-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           Reactivate

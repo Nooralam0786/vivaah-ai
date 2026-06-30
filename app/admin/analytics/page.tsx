@@ -6,21 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { TrendingUp, Users, Heart, ShieldCheck, Crown } from 'lucide-react';
-
-interface Stats {
-  kpis: {
-    totalUsers: number; activeUsers: number; newUsers7d: number;
-    totalMatches: number; mutualMatches: number; totalLikes: number;
-    pendingVerifications: number; totalSubscriptions: number;
-  };
-  charts: {
-    registrations:         { label: string; count: number }[];
-    dailyLikes:            { label: string; count: number }[];
-    tierBreakdown:         { tier: string; count: number }[];
-    genderBreakdown:       { gender: string; count: number }[];
-    verificationBreakdown: { status: string; label: string; count: number }[];
-  };
-}
+import type { Stats } from '../_components/dashboardTypes';
 
 const TIER_COLORS: Record<string, string> = {
   free:     '#9ca3af',
@@ -98,7 +84,7 @@ export default function AnalyticsPage() {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Reports & Analytics</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">Reports & Analytics</h1>
         <p className="text-sm text-gray-500 mt-0.5">Platform-wide metrics and insights</p>
       </div>
 
@@ -115,36 +101,40 @@ export default function AnalyticsPage() {
         {/* Registration chart */}
         <Card title="New Registrations (Last 30 Days)" subtitle="Daily user sign-up trend">
           {mounted && (charts?.registrations?.length ?? 0) > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={charts!.registrations} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#6B1B3D" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#6B1B3D" stopOpacity={0}    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 12 }} />
-                <Area type="monotone" dataKey="count" name="Registrations" stroke="#6B1B3D" fill="url(#regGrad)" strokeWidth={2.5} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="h-52 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charts!.registrations} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#6B1B3D" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#6B1B3D" stopOpacity={0}    />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 12 }} />
+                  <Area type="monotone" dataKey="count" name="Registrations" stroke="#6B1B3D" fill="url(#regGrad)" strokeWidth={2.5} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           ) : <div className="h-52 animate-pulse bg-gray-100 rounded-xl" />}
         </Card>
 
         {/* Daily Likes chart */}
         <Card title="Daily Likes / Interest Sent" subtitle="Platform engagement activity">
           {mounted && (charts?.dailyLikes?.length ?? 0) > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={charts!.dailyLikes} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="count" name="Likes" fill="#D4AF37" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-52 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts!.dailyLikes} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 12 }} />
+                  <Bar dataKey="count" name="Likes" fill="#D4AF37" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : <div className="h-52 animate-pulse bg-gray-100 rounded-xl" />}
         </Card>
       </div>

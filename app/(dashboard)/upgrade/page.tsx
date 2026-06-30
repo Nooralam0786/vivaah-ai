@@ -123,10 +123,10 @@ export default function UpgradePage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-white">
+      <div className="min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-rose-50 to-white rounded-2xl px-4">
         <div className="text-center">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-extrabold text-gray-900">{done}</h2>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900">{done}</h2>
           <p className="text-gray-500 mt-2 text-sm">Redirecting to dashboard…</p>
         </div>
       </div>
@@ -134,7 +134,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-rose-50/50 via-white to-amber-50/30 p-4 py-8">
+    <div className="bg-gradient-to-br from-rose-50/50 via-white to-amber-50/30 rounded-2xl p-4 py-8">
       <div className="max-w-5xl mx-auto">
 
         {/* Back */}
@@ -184,7 +184,7 @@ export default function UpgradePage() {
                 <h3 className="font-extrabold text-gray-900 text-lg">{plan.label}</h3>
                 <p className="text-xs text-gray-400 mb-2">{plan.tagline}</p>
                 <div className="mb-4">
-                  <span className="text-2xl font-extrabold text-gray-900">{plan.priceStr}</span>
+                  <span className="text-xl sm:text-2xl font-extrabold text-gray-900">{plan.priceStr}</span>
                   {plan.price > 0 && <span className="text-xs text-gray-400 ml-1">/ month</span>}
                 </div>
                 <ul className="space-y-1.5 mb-5 flex-1">

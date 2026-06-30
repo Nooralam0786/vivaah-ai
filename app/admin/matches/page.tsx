@@ -25,19 +25,19 @@ export default function MatchesPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Matches</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Matches</h1>
           <p className="text-sm text-gray-500 mt-0.5">AI-powered compatibility matches between users</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
           <Heart size={18} className="text-rose-500" />
         </div>
       </div>
 
       {/* Stat */}
       {totalMatches !== null && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 max-w-xs">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 w-full sm:max-w-xs">
           <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center">
             <Heart size={20} className="text-rose-500" />
           </div>

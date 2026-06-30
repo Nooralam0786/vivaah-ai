@@ -213,7 +213,7 @@ export default function TopPicksPage() {
                   {profile.reasons && <MatchReasons reasons={profile.reasons} />}
 
                   {/* Actions */}
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <button
                       onClick={() => handleLike(profile.userId)}
                       disabled={likedIds.has(profile.userId)}

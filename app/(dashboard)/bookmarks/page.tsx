@@ -74,7 +74,21 @@ export default function BookmarksPage() {
   };
 
   if (loading) {
-    return <div className="max-w-7xl mx-auto"><p className="text-sm text-neutral-400">Loading your saved profiles…</p></div>;
+    return (
+      <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden animate-pulse">
+              <div className="aspect-[3/4] bg-neutral-200" />
+              <div className="p-3 space-y-2">
+                <div className="h-3.5 bg-neutral-200 rounded w-3/4" />
+                <div className="h-3 bg-neutral-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -105,7 +119,7 @@ export default function BookmarksPage() {
                 <div className="absolute inset-0 bg-card-gradient" />
                 <button onClick={() => remove(b)}
                   className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-red-500/80 transition-colors text-xs"
-                  title="Remove bookmark">
+                  title="Remove bookmark" aria-label="Remove bookmark">
                   🗑️
                 </button>
                 <div className="absolute bottom-0 left-0 right-0 p-3">

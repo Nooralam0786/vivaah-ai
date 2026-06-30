@@ -19,12 +19,12 @@ export default function RefundsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Refund Requests</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Refund Requests</h1>
           <p className="text-sm text-gray-500 mt-0.5">Review and process user refund requests</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center flex-shrink-0">
           <RotateCcw size={18} className="text-orange-500" />
         </div>
       </div>
@@ -44,7 +44,7 @@ export default function RefundsPage() {
       {/* Example table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden opacity-60 pointer-events-none select-none">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[760px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 {['Request ID', 'User', 'Plan', 'Amount', 'Reason', 'Status', 'Date'].map((h) => (

@@ -133,7 +133,7 @@ export default function PremiumPage() {
                 {plan.name}
               </h3>
               <div className={`mt-2 ${plan.id === 'platinum' ? 'text-white' : plan.id === 'gold' ? 'text-neutral-900' : 'text-neutral-700'}`}>
-                <span className="text-3xl font-bold">₹{billing === 'yearly' ? Math.round(plan.price * 0.8) : plan.price}</span>
+                <span className="text-2xl sm:text-3xl font-bold">₹{billing === 'yearly' ? Math.round(plan.price * 0.8) : plan.price}</span>
                 <span className="text-sm opacity-70"> / {plan.period}</span>
               </div>
             </div>
@@ -159,8 +159,8 @@ export default function PremiumPage() {
 
       {/* Proceed Button */}
       {selected && (
-        <div className="text-center">
-          <button className="px-8 py-4 bg-primary-gradient text-white rounded-2xl text-base font-bold hover:opacity-90 transition-opacity shadow-lg animate-bounce-soft">
+        <div className="text-center px-4">
+          <button className="w-full sm:w-auto px-8 py-4 bg-primary-gradient text-white rounded-2xl text-sm sm:text-base font-bold hover:opacity-90 transition-opacity shadow-lg animate-bounce-soft">
             Proceed to Payment → {PLANS.find((p) => p.id === selected)?.name} Plan
           </button>
         </div>

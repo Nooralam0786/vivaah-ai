@@ -127,7 +127,7 @@ export default function BoostPage() {
           <h1 className="text-2xl font-bold mb-1">Profile Boost</h1>
           <p className="text-white/70 text-sm">Get 10x more views — appear at the top of every search</p>
           <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-4xl font-bold">₹99</span>
+            <span className="text-3xl sm:text-4xl font-bold">₹99</span>
             <span className="text-white/60">/ 7 days</span>
           </div>
         </div>

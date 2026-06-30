@@ -19,12 +19,12 @@ export default function PayoutsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Payouts</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Payouts</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage affiliate, referral, and partner payouts</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center flex-shrink-0">
           <Wallet size={18} className="text-[#6B1B3D]" />
         </div>
       </div>
@@ -44,7 +44,7 @@ export default function PayoutsPage() {
       {/* Example payout table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden opacity-60 pointer-events-none select-none">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 {['Payout ID', 'Recipient / Partner', 'Amount', 'Method', 'Status', 'Date'].map((h) => (
@@ -68,7 +68,7 @@ export default function PayoutsPage() {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs text-gray-400">Total pending: ₹7,400</p>
           <button className="text-xs text-[#6B1B3D] font-semibold">Process All →</button>
         </div>

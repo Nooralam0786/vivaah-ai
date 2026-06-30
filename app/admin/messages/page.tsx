@@ -13,12 +13,12 @@ export default function MessagesPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Messages</h1>
           <p className="text-sm text-gray-500 mt-0.5">Monitor conversations between matched users</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
           <MessageSquare size={18} className="text-blue-500" />
         </div>
       </div>
@@ -48,7 +48,7 @@ export default function MessagesPage() {
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D4AF37] to-amber-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white">{t.user2[0]}</div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800">{t.user1} &amp; {t.user2}</p>
+                <p className="text-sm font-semibold text-gray-800 truncate">{t.user1} &amp; {t.user2}</p>
                 <p className="text-xs text-gray-400 truncate">{t.last}</p>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">

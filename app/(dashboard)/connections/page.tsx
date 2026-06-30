@@ -88,7 +88,19 @@ export default function ConnectionsPage() {
   const filtered = connections.filter((c) => activeTab === 'All' || c.status === activeTab);
 
   if (loading) {
-    return <div className="max-w-7xl mx-auto"><p className="text-sm text-neutral-400">Loading your connections…</p></div>;
+    return (
+      <div className="max-w-7xl mx-auto space-y-3 animate-fade-in">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-vivaah-border shadow-card p-4 flex items-center gap-4 animate-pulse">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-200 flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 bg-neutral-200 rounded w-36" />
+              <div className="h-3 bg-neutral-100 rounded w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (error) {
@@ -134,32 +146,34 @@ export default function ConnectionsPage() {
       {/* Connections List */}
       <div className="space-y-3">
         {filtered.map((conn) => (
-          <div key={conn.id} className="bg-white rounded-2xl border border-vivaah-border shadow-card p-4 flex items-center gap-4 hover:shadow-card-hover transition-all">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-primary-100 flex-shrink-0">
-              <img src={conn.photo ?? undefined} alt={conn.name} className="w-full h-full object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-neutral-900">{conn.name}{conn.age ? `, ${conn.age}` : ''}</h3>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_STYLES[conn.status]}`}>{conn.status}</span>
-                {conn.matchPercent > 0 && <span className="text-xs font-bold px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full">{conn.matchPercent}% match</span>}
+          <div key={conn.id} className="bg-white rounded-2xl border border-vivaah-border shadow-card p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-card-hover transition-all">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-primary-100 flex-shrink-0">
+                <img src={conn.photo ?? undefined} alt={conn.name} className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
-              <p className="text-sm text-neutral-500 mt-0.5">{[conn.profession, conn.location].filter(Boolean).join(' · ')}</p>
-              <p className="text-xs text-neutral-400 mt-0.5">{timeAgo(conn.connectedAt)}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-neutral-900">{conn.name}{conn.age ? `, ${conn.age}` : ''}</h3>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_STYLES[conn.status]}`}>{conn.status}</span>
+                  {conn.matchPercent > 0 && <span className="text-xs font-bold px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full">{conn.matchPercent}% match</span>}
+                </div>
+                <p className="text-sm text-neutral-500 mt-0.5 truncate">{[conn.profession, conn.location].filter(Boolean).join(' · ')}</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{timeAgo(conn.connectedAt)}</p>
+              </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
               {conn.status === 'Pending' && (
                 <>
-                  <button onClick={() => acceptConnection(conn)} className="px-3 py-1.5 bg-primary-gradient text-white rounded-lg text-xs font-semibold hover:opacity-90">Accept</button>
-                  <button onClick={() => declineConnection(conn)} className="px-3 py-1.5 border border-red-300 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-50">Decline</button>
+                  <button onClick={() => acceptConnection(conn)} className="flex-1 sm:flex-initial px-3 py-1.5 bg-primary-gradient text-white rounded-lg text-xs font-semibold hover:opacity-90">Accept</button>
+                  <button onClick={() => declineConnection(conn)} className="flex-1 sm:flex-initial px-3 py-1.5 border border-red-300 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-50">Decline</button>
                 </>
               )}
               {conn.status === 'Accepted' && (
-                <a href="/messages" className="px-3 py-1.5 bg-primary-gradient text-white rounded-lg text-xs font-semibold hover:opacity-90">💬 Message</a>
+                <a href="/messages" className="flex-1 sm:flex-initial text-center px-3 py-1.5 bg-primary-gradient text-white rounded-lg text-xs font-semibold hover:opacity-90">💬 Message</a>
               )}
               {conn.status === 'Sent' && (
-                <button className="px-3 py-1.5 border border-vivaah-border text-neutral-500 rounded-lg text-xs font-medium hover:bg-vivaah-bg">Pending...</button>
+                <button className="flex-1 sm:flex-initial px-3 py-1.5 border border-vivaah-border text-neutral-500 rounded-lg text-xs font-medium hover:bg-vivaah-bg">Pending...</button>
               )}
             </div>
           </div>

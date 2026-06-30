@@ -44,7 +44,7 @@ export default function ReferralPage() {
     const msg = encodeURIComponent(
       `Find your perfect match on VivaahAI! 💍\nJoin using my referral link and get started for free:\n${data.referralLink}`
     );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
   };
 
   if (!auth) {
@@ -137,7 +137,7 @@ export default function ReferralPage() {
           </div>
 
           {/* Share buttons */}
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
               onClick={shareWhatsApp}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
@@ -156,7 +156,7 @@ export default function ReferralPage() {
 
       {/* Stats */}
       {data && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           {[
             { label: 'Friends Invited', value: data.stats.totalReferred, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
             { label: 'Converted', value: data.stats.totalRewarded, icon: Star, color: 'text-[#D4AF37]', bg: 'bg-amber-50' },

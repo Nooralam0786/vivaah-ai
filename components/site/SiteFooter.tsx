@@ -1,7 +1,21 @@
 import Link from "next/link";
 
-const QUICK_LINKS = ["About Us", "How It Works", "Success Stories", "Safety", "Premium"];
-const SUPPORT_LINKS = ["Help Center", "Contact Us", "Privacy Policy", "Terms of Service", "Refund Policy", "FAQ"];
+const QUICK_LINKS = [
+  { label: "About Us",        href: "/about-us" },
+  { label: "How It Works",    href: "/how-it-works" },
+  { label: "Success Stories", href: "/success-stories" },
+  { label: "Safety",          href: "/safety" },
+  { label: "Premium",         href: "/premium" },
+];
+
+const SUPPORT_LINKS = [
+  { label: "Help Center",      href: "/help" },
+  { label: "Contact Us",       href: "/contact-us" },
+  { label: "Privacy Policy",   href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Refund Policy",    href: "/refund-policy" },
+  { label: "FAQ",              href: "/help" },
+];
 
 const SOCIAL_LINKS = [
   { label: "Facebook", path: "M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" },
@@ -14,18 +28,18 @@ export default function SiteFooter() {
   return (
     <footer className="bg-gradient-to-br from-[#581630] via-[#6B1B3D] to-[#581630] text-white">
       <div className="container-safe py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-10">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 lg:gap-10">
+          {/* Brand — full-width on mobile, 1-col on sm+ */}
+          <div className="sm:col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[#D4AF37]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-7 h-7">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-7 h-7" aria-hidden="true">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
               </span>
               <span className="text-xl font-extrabold">VivaahAI</span>
             </div>
-            <p className="text-sm text-white/60 leading-relaxed max-w-[230px]">
+            <p className="text-sm text-white/60 leading-relaxed max-w-xs">
               AI-powered matrimonial platform helping people find meaningful relationships.
             </p>
             <div className="flex items-center gap-3 mt-5">
@@ -33,10 +47,10 @@ export default function SiteFooter() {
                 <a
                   key={s.label}
                   href="#"
-                  aria-label={s.label}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-[#D4AF37] hover:text-[#6B1B3D] flex items-center justify-center transition-colors"
+                  aria-label={`Follow us on ${s.label}`}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-[#D4AF37] hover:text-[#6B1B3D] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden="true">
                     <path d={s.path} />
                   </svg>
                 </a>
@@ -46,12 +60,12 @@ export default function SiteFooter() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-sm font-bold text-[#D4AF37] mb-4">Quick Links</h4>
+            <h3 className="text-sm font-bold text-[#D4AF37] mb-4">Quick Links</h3>
             <ul className="space-y-2.5 text-sm text-white/70">
               {QUICK_LINKS.map((l) => (
-                <li key={l}>
-                  <Link href="#" className="hover:text-[#D4AF37] transition-colors">
-                    {l}
+                <li key={l.label}>
+                  <Link href={l.href} className="hover:text-[#D4AF37] transition-colors focus:outline-none focus-visible:text-[#D4AF37]">
+                    {l.label}
                   </Link>
                 </li>
               ))}
@@ -60,12 +74,12 @@ export default function SiteFooter() {
 
           {/* Support */}
           <div>
-            <h4 className="text-sm font-bold text-[#D4AF37] mb-4">Support</h4>
+            <h3 className="text-sm font-bold text-[#D4AF37] mb-4">Support</h3>
             <ul className="space-y-2.5 text-sm text-white/70">
               {SUPPORT_LINKS.map((l) => (
-                <li key={l}>
-                  <Link href="#" className="hover:text-[#D4AF37] transition-colors">
-                    {l}
+                <li key={l.label}>
+                  <Link href={l.href} className="hover:text-[#D4AF37] transition-colors focus:outline-none focus-visible:text-[#D4AF37]">
+                    {l.label}
                   </Link>
                 </li>
               ))}

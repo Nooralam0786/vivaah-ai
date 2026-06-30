@@ -158,15 +158,15 @@ export default function StatsCards() {
             className="bg-white rounded-2xl px-3.5 py-3 border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200"
           >
             {/* Row 1: icon + label */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 min-w-0">
               <div className={`w-7 h-7 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
                 <Icon size={14} className={card.iconColor} />
               </div>
-              <span className="text-[11px] text-neutral-500 font-medium leading-tight">{card.label}</span>
+              <span className="text-[11px] text-neutral-500 font-medium leading-tight truncate min-w-0">{card.label}</span>
             </div>
 
             {/* Row 2: value */}
-            <div className="text-xl font-bold text-neutral-900 leading-none mb-2">{card.value}</div>
+            <div className="text-lg sm:text-xl font-bold text-neutral-900 leading-none mb-2 truncate">{card.value}</div>
 
             {/* Row 3: change text + sparkline OR progress bar */}
             {card.isStrength ? (
@@ -183,8 +183,8 @@ export default function StatsCards() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-end justify-between gap-2">
-                <span className={`text-[11px] font-medium ${changeColor} leading-tight`}>
+              <div className="flex items-end justify-between gap-2 min-w-0">
+                <span className={`text-[11px] font-medium ${changeColor} leading-tight truncate min-w-0`}>
                   <TrendingUp size={10} className="inline mr-0.5" />
                   {card.change}
                 </span>

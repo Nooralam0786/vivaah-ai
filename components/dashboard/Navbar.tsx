@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  Menu, Search, Bell, MessageSquare, ChevronDown,
+  Search, Bell, MessageSquare, ChevronDown,
   Crown, User, Settings, HelpCircle, LogOut, ShieldCheck,
 } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
@@ -111,21 +111,17 @@ export default function DashboardNavbar() {
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 z-20 h-14 bg-white border-b border-vivaah-border flex items-center px-4 md:px-6 gap-3 shadow-sm">
 
-      {/* Hamburger — mobile only */}
-      <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-neutral-500 hover:bg-vivaah-muted transition-colors flex-shrink-0">
-        <Menu className="w-5 h-5" />
-      </button>
-
-      {/* Search Bar */}
-      <div className="flex-1 max-w-xs hidden sm:block">
+      {/* Search Bar — hidden on mobile; sidebar toggle occupies top-left corner */}
+      <div className="flex-1 max-w-xs hidden sm:block ml-10 lg:ml-0">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search anything..."
+            aria-label="Search dashboard"
             className="w-full pl-9 pr-14 py-1.5 bg-vivaah-bg border border-vivaah-border rounded-xl text-sm text-neutral-700 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700/40 transition-all"
           />
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded font-medium tracking-wide">
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded font-medium tracking-wide" aria-hidden="true">
             ⌘ K
           </span>
         </div>
@@ -147,6 +143,9 @@ export default function DashboardNavbar() {
         <div ref={notifRef} className="relative">
           <button
             onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); if (!notifOpen) fetchNotifications(); }}
+            aria-label={`Notifications${notifCount > 0 ? `, ${notifCount} unread` : ''}`}
+            aria-expanded={notifOpen}
+            aria-haspopup="true"
             className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
             <Bell className="w-5 h-5" />
             {notifCount > 0 && (
@@ -197,6 +196,7 @@ export default function DashboardNavbar() {
 
         {/* Messages with unread badge */}
         <Link href="/messages"
+          aria-label={`Messages${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
           className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-vivaah-muted transition-colors text-neutral-500">
           <MessageSquare className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -213,6 +213,9 @@ export default function DashboardNavbar() {
         <div ref={profileRef} className="relative">
           <button
             onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+            aria-label="Open profile menu"
+            aria-expanded={profileOpen}
+            aria-haspopup="true"
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-vivaah-muted transition-colors">
             <div className="relative">
               <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">

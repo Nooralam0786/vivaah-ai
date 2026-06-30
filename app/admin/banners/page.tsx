@@ -18,18 +18,18 @@ export default function BannersPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Banners</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Banners</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage promotional banners and images across the platform</p>
         </div>
-        <button disabled className="flex items-center gap-2 px-4 py-2 bg-[#6B1B3D]/50 text-white rounded-xl text-sm font-semibold cursor-not-allowed">
+        <button disabled className="flex items-center justify-center gap-2 px-4 py-2 bg-[#6B1B3D]/50 text-white rounded-xl text-sm font-semibold cursor-not-allowed self-start sm:self-auto">
           <Plus size={15} /> Upload Banner
         </button>
       </div>
 
       {/* Coming Soon Banner */}
-      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-4 sm:p-6 text-white">
         <div className="flex items-center gap-3 mb-2">
           <Clock size={20} className="text-[#D4AF37]" />
           <span className="text-[#D4AF37] font-bold text-sm tracking-wide uppercase">Coming Soon</span>
@@ -41,7 +41,7 @@ export default function BannersPage() {
       </div>
 
       {/* Upload placeholder */}
-      <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-8 text-center opacity-60 pointer-events-none select-none">
+      <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 text-center opacity-60 pointer-events-none select-none">
         <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
           <Upload size={22} className="text-gray-400" />
         </div>

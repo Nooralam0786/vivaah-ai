@@ -9,6 +9,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevents layout shift when scrollbar appears/disappears */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -27,25 +29,14 @@ body {
   display: none;
 }
 
-/* Typography */
-h1 {
-  @apply text-4xl font-bold tracking-tight;
+/* Base scroll adjustment for fixed headers */
+html {
+  scroll-padding-top: 4rem;
 }
 
-h2 {
-  @apply text-3xl font-semibold tracking-tight;
-}
-
-h3 {
-  @apply text-2xl font-semibold;
-}
-
-h4 {
-  @apply text-lg font-semibold;
-}
-
-p {
-  @apply text-base leading-relaxed;
+/* Headings — intentionally unstyled so each component controls its own type scale */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold leading-tight;
 }
 
 /* Forms */
@@ -169,4 +160,25 @@ select:disabled {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Dynamic viewport height — falls back to 100vh on unsupported browsers */
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Focus ring — consistent across interactive elements */
+.focus-ring {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-700/50 focus-visible:ring-offset-1;
+}
+
+/* Overlay backdrop */
+.overlay-backdrop {
+  @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-40;
 }

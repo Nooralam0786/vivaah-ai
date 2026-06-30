@@ -1,32 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Search, Filter, ShieldCheck, Crown, X, UserX, UserCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface AdminUser {
-  id: string; fullName: string; email: string; phone: string;
-  gender: string | null; onboardingStep: string; createdAt: string;
-  photo: string | null; city: string | null; occupation: string | null;
-  isVerified: boolean; subscriptionTier: string;
-  verificationStatus: string; likesGiven: number; likesReceived: number;
-}
-
-const TIER_BADGE: Record<string, { label: string; cls: string }> = {
-  free:     { label: 'Free',     cls: 'bg-gray-100 text-gray-500 border border-gray-200'      },
-  gold:     { label: 'Gold',     cls: 'bg-amber-50 text-amber-600 border border-amber-200'    },
-  platinum: { label: 'Platinum', cls: 'bg-blue-50 text-blue-600 border border-blue-200'       },
-  diamond:  { label: 'Diamond',  cls: 'bg-rose-50 text-[#6B1B3D] border border-rose-200'     },
-};
-
-function Avatar({ name, photo }: { name: string; photo: string | null }) {
-  const [err, setErr] = useState(false);
-  if (photo && !err) return <img src={photo} alt={name} onError={() => setErr(true)} className="w-8 h-8 rounded-full object-cover" />;
-  return (
-    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6B1B3D] to-[#9B2D5F] flex items-center justify-center text-white text-xs font-bold">
-      {name[0]?.toUpperCase()}
-    </div>
-  );
-}
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import UserCard from './_components/UserCard';
+import UserRow from './_components/UserRow';
+import type { AdminUser } from './_components/types';
 
 export default function AdminUsersPage() {
   const [users,    setUsers]    = useState<AdminUser[]>([]);
@@ -60,7 +38,7 @@ export default function AdminUsersPage() {
     return () => clearTimeout(t);
   }, [search, tier, verified, fetchUsers]);
 
-  const doAction = async (userId: string, action: 'suspend' | 'activate' | 'delete') => {
+  const doAction = useCallback(async (userId: string, action: 'suspend' | 'activate' | 'delete') => {
     setActing(userId);
     const res  = await fetch(`/api/admin/users/${userId}`, {
       method:  'PATCH',
@@ -72,15 +50,27 @@ export default function AdminUsersPage() {
     setToast({ msg: json.data?.message ?? json.error?.message ?? 'Done', ok: json.success });
     setTimeout(() => setToast(null), 3000);
     if (json.success) fetchUsers(page, search, tier, verified);
-  };
+  }, [page, search, tier, verified, fetchUsers]);
+
+  const handleSuspend  = useCallback((id: string) => doAction(id, 'suspend'), [doAction]);
+  const handleActivate = useCallback((id: string) => doAction(id, 'activate'), [doAction]);
+  const handleDelete   = useCallback((id: string, name: string) => {
+    if (confirm(`Delete ${name}? This cannot be undone.`)) doAction(id, 'delete');
+  }, [doAction]);
+
+  const goPrevPage = useCallback(() => { const p = page - 1; setPage(p); fetchUsers(p, search, tier, verified); }, [page, search, tier, verified, fetchUsers]);
+  const goNextPage = useCallback(() => { const p = page + 1; setPage(p); fetchUsers(p, search, tier, verified); }, [page, search, tier, verified, fetchUsers]);
+
+  const rangeStart = useMemo(() => ((page - 1) * LIMIT) + 1, [page]);
+  const rangeEnd   = useMemo(() => Math.min(page * LIMIT, total), [page, total]);
 
   return (
     <div className="space-y-5">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Users</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total.toLocaleString('en-IN')} registered users</p>
         </div>
       </div>
@@ -94,7 +84,7 @@ export default function AdminUsersPage() {
             value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#6B1B3D]/50 transition-colors shadow-sm"
           />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>}
+          {search && <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40 rounded"><X className="w-3.5 h-3.5" /></button>}
         </div>
 
         <select value={tier} onChange={(e) => setTier(e.target.value)}
@@ -121,12 +111,29 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 animate-pulse space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-3 bg-gray-100 rounded w-2/3" />
+              </div>
+            ))
+          : users.map((u) => (
+              <UserCard key={u.id} user={u} acting={acting} onSuspend={handleSuspend} onActivate={handleActivate} onDelete={handleDelete} />
+            ))}
+        {!loading && users.length === 0 && (
+          <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border border-gray-200">No users found</div>
+        )}
+      </div>
+
+      {/* Table (desktop/tablet) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[860px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-gray-100 bg-gray-50 sticky top-0 z-10">
                 {['User', 'Contact', 'Plan', 'Status', 'Activity', 'Joined', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
@@ -141,80 +148,9 @@ export default function AdminUsersPage() {
                       ))}
                     </tr>
                   ))
-                : users.map((u) => {
-                    const tierInfo   = TIER_BADGE[u.subscriptionTier] ?? TIER_BADGE.free;
-                    const isSuspended = u.onboardingStep === 'suspended';
-                    return (
-                      <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="relative flex-shrink-0">
-                              <Avatar name={u.fullName} photo={u.photo} />
-                              {u.isVerified && (
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                                  <ShieldCheck className="w-2 h-2 text-white" strokeWidth={3} />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-800 truncate max-w-32">{u.fullName}</p>
-                              <p className="text-[10px] text-gray-400 capitalize">{u.gender ?? '—'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-xs text-gray-600 truncate max-w-40">{u.email}</p>
-                          <p className="text-[10px] text-gray-400">{u.phone}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${tierInfo.cls}`}>
-                            {u.subscriptionTier !== 'free' && <Crown className="w-2.5 h-2.5" />}
-                            {tierInfo.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            isSuspended
-                              ? 'bg-red-50 text-red-600 border-red-100'
-                              : u.onboardingStep === 'complete'
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                              : 'bg-amber-50 text-amber-600 border-amber-100'
-                          }`}>
-                            {isSuspended ? 'Suspended' : u.onboardingStep === 'complete' ? 'Active' : 'Onboarding'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-xs text-gray-600">❤️ {u.likesGiven} given</p>
-                          <p className="text-[10px] text-gray-400">{u.likesReceived} received</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-xs text-gray-500 whitespace-nowrap">
-                            {new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            {isSuspended ? (
-                              <button onClick={() => doAction(u.id, 'activate')} disabled={acting === u.id} title="Activate"
-                                className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors disabled:opacity-50 border border-emerald-200">
-                                <UserCheck className="w-3.5 h-3.5" />
-                              </button>
-                            ) : (
-                              <button onClick={() => doAction(u.id, 'suspend')} disabled={acting === u.id} title="Suspend"
-                                className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition-colors disabled:opacity-50 border border-amber-200">
-                                <UserX className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button onClick={() => { if (confirm(`Delete ${u.fullName}? This cannot be undone.`)) doAction(u.id, 'delete'); }}
-                              disabled={acting === u.id} title="Delete"
-                              className="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors disabled:opacity-50 border border-red-200">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                : users.map((u) => (
+                    <UserRow key={u.id} user={u} acting={acting} onSuspend={handleSuspend} onActivate={handleActivate} onDelete={handleDelete} />
+                  ))}
             </tbody>
           </table>
         </div>
@@ -222,26 +158,26 @@ export default function AdminUsersPage() {
         {!loading && users.length === 0 && (
           <div className="text-center py-16 text-gray-400">No users found</div>
         )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
-            <p className="text-xs text-gray-500">
-              {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString('en-IN')}
-            </p>
-            <div className="flex items-center gap-2">
-              <button onClick={() => { const p = page - 1; setPage(p); fetchUsers(p, search, tier, verified); }} disabled={page === 1}
-                className="w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-xs text-gray-500 px-2">{page}/{totalPages}</span>
-              <button onClick={() => { const p = page + 1; setPage(p); fetchUsers(p, search, tier, verified); }} disabled={page >= totalPages}
-                className="w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <p className="text-xs text-gray-500">
+            {rangeStart}–{rangeEnd} of {total.toLocaleString('en-IN')}
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={goPrevPage} disabled={page === 1} aria-label="Previous page"
+              className="w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-gray-500 px-2">{page}/{totalPages}</span>
+            <button onClick={goNextPage} disabled={page >= totalPages} aria-label="Next page"
+              className="w-7 h-7 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl text-sm font-semibold shadow-xl border ${toast.ok ? 'bg-white text-emerald-700 border-emerald-200' : 'bg-white text-red-600 border-red-200'}`}>

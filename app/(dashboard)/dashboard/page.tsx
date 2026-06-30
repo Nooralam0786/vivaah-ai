@@ -68,8 +68,8 @@ export default function DashboardPage() {
           <RecentActivity />
         </div>
 
-        {/* Right panel — Profile Strength + Family Connect */}
-        <div className="hidden xl:flex flex-col gap-4 w-[300px] flex-shrink-0">
+        {/* Right panel — visible on lg+ (1024px); width shrinks gracefully at 1024-1280px */}
+        <div className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 flex-shrink-0">
           <ProfileStrength />
           <FamilyConnect />
         </div>

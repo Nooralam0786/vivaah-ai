@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Star, CheckCircle2, XCircle, Eye, EyeOff, Trash2, RefreshCw } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
 
@@ -79,21 +80,24 @@ export default function AdminSuccessStoriesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-neutral-900">Success Stories</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-neutral-900">Success Stories</h1>
           <p className="text-sm text-neutral-500">Review and approve user-submitted stories</p>
         </div>
-        <button onClick={() => fetchStories()} className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 rounded-lg text-sm text-neutral-600 hover:bg-neutral-200 transition-colors">
+        <button
+          onClick={() => fetchStories()}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-neutral-100 rounded-lg text-sm text-neutral-600 hover:bg-neutral-200 transition-colors self-start sm:self-auto focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40"
+        >
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
 
       {/* Count tabs */}
-      <div className="flex gap-3 mb-5">
+      <div className="flex gap-2 sm:gap-3 mb-5 flex-wrap">
         {[
           { label: 'All',      value: '',         count: counts.pending + counts.approved + counts.rejected },
           { label: 'Pending',  value: 'pending',  count: counts.pending,  color: 'text-amber-600' },
@@ -133,11 +137,11 @@ export default function AdminSuccessStoriesPage() {
             <div key={story.id} className="bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden">
 
               {/* Story header */}
-              <div className="p-4 flex items-start gap-4">
+              <div className="p-4 flex items-start gap-3 sm:gap-4">
                 {/* Photo or placeholder */}
-                <div className="w-14 h-14 rounded-xl bg-[#F9F0F4] flex-shrink-0 flex items-center justify-center overflow-hidden">
+                <div className="relative w-14 h-14 rounded-xl bg-[#F9F0F4] flex-shrink-0 flex items-center justify-center overflow-hidden">
                   {story.photo
-                    ? <img src={story.photo} alt="" className="w-full h-full object-cover" />
+                    ? <Image src={story.photo} alt="" fill sizes="56px" className="object-cover" />
                     : <Star size={20} className="text-[#6B1B3D]/40" />}
                 </div>
 
@@ -215,6 +219,7 @@ export default function AdminSuccessStoriesPage() {
                 <a
                   href={`/profile/${story.userId}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-semibold hover:bg-neutral-200 transition-colors"
                 >
                   <Eye size={13} /> View Profile

@@ -58,9 +58,9 @@ export default function ProfilesPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Profiles</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Profiles</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total.toLocaleString('en-IN')} user profiles</p>
         </div>
         <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center">
@@ -69,7 +69,7 @@ export default function ProfilesPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text" placeholder="Search by name or email…"
@@ -77,7 +77,7 @@ export default function ProfilesPage() {
           className="w-full pl-9 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#6B1B3D]/50 transition-colors shadow-sm"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40 rounded">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
@@ -154,16 +154,16 @@ export default function ProfilesPage() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-2 bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm">
           <p className="text-xs text-gray-500">{((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString('en-IN')}</p>
           <div className="flex items-center gap-2">
             <button onClick={() => { const p = page - 1; setPage(p); fetchUsers(p, search); }} disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs text-gray-600 disabled:opacity-30 hover:bg-gray-100 transition-colors">
+              className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs text-gray-600 disabled:opacity-30 hover:bg-gray-100 transition-colors focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
               ← Prev
             </button>
             <span className="text-xs text-gray-500 px-2">{page}/{totalPages}</span>
             <button onClick={() => { const p = page + 1; setPage(p); fetchUsers(p, search); }} disabled={page >= totalPages}
-              className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs text-gray-600 disabled:opacity-30 hover:bg-gray-100 transition-colors">
+              className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs text-gray-600 disabled:opacity-30 hover:bg-gray-100 transition-colors focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
               Next →
             </button>
           </div>

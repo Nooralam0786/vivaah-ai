@@ -80,11 +80,11 @@ export default function AdminLogsPage() {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); load(); };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Activity className="w-6 h-6 text-[#6B1B3D]" /> Activity Logs
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-[#6B1B3D]" /> Activity Logs
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Audit trail — {total.toLocaleString()} events recorded
@@ -108,17 +108,17 @@ export default function AdminLogsPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSearch} className="flex gap-2 ml-auto">
-            <div className="relative">
+          <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or action…"
-                className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1B3D]/20 w-60"
+                className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1B3D]/20 w-full sm:w-60"
               />
             </div>
-            <button type="submit" className="px-4 py-2 bg-[#6B1B3D] text-white rounded-xl text-sm font-medium hover:bg-[#5a1633]">
+            <button type="submit" className="px-4 py-2 bg-[#6B1B3D] text-white rounded-xl text-sm font-medium hover:bg-[#5a1633] flex-shrink-0">
               Search
             </button>
           </form>
@@ -183,20 +183,22 @@ export default function AdminLogsPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-t border-gray-100">
             <p className="text-sm text-gray-500">Page {page} of {totalPages} ({total.toLocaleString()} total)</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Previous page"
+                className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Next page"
+                className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

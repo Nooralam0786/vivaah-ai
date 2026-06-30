@@ -63,55 +63,57 @@ function VisitorCard({
 
   return (
     <div className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-200">
-      <div className="flex items-center gap-4 p-4">
-        {/* Photo */}
-        <div className="relative flex-shrink-0">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50">
-            {visitor.photo && !imgErr ? (
-              <img
-                src={visitor.photo}
-                alt={visitor.name}
-                className="w-full h-full object-cover"
-                onError={() => setImgErr(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          {/* Photo */}
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50">
+              {visitor.photo && !imgErr ? (
+                <img
+                  src={visitor.photo}
+                  alt={visitor.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setImgErr(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
+              )}
+            </div>
+            {visitor.isOnline && (
+              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
             )}
           </div>
-          {visitor.isOnline && (
-            <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
-          )}
-        </div>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h3 className="font-bold text-neutral-900 text-sm truncate">
-              {visitor.name}{visitor.age ? `, ${visitor.age}` : ''}
-            </h3>
-            {visitor.isVerified && <span className="text-blue-500 text-xs">✓</span>}
-          </div>
-          {visitor.profession && (
-            <p className="text-xs text-neutral-500 truncate mt-0.5">{visitor.profession}</p>
-          )}
-          {visitor.location && (
-            <p className="text-xs text-neutral-400 truncate">📍 {visitor.location}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${scoreBg(visitor.matchPercent)}`}>
-              {visitor.matchPercent}% match
-            </span>
-            <span className="text-[10px] text-neutral-400 flex items-center gap-1">
-              <Eye size={10} /> {visitor.viewedAgo}
-            </span>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-bold text-neutral-900 text-sm truncate">
+                {visitor.name}{visitor.age ? `, ${visitor.age}` : ''}
+              </h3>
+              {visitor.isVerified && <span className="text-blue-500 text-xs">✓</span>}
+            </div>
+            {visitor.profession && (
+              <p className="text-xs text-neutral-500 truncate mt-0.5">{visitor.profession}</p>
+            )}
+            {visitor.location && (
+              <p className="text-xs text-neutral-400 truncate">📍 {visitor.location}</p>
+            )}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${scoreBg(visitor.matchPercent)}`}>
+                {visitor.matchPercent}% match
+              </span>
+              <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+                <Eye size={10} /> {visitor.viewedAgo}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-2 flex-shrink-0">
+        <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0 w-full sm:w-auto">
           <button
             onClick={onLike}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+            className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
               isLiked
                 ? 'bg-primary-gradient text-white'
                 : 'border border-primary-700 text-primary-700 hover:bg-primary-50'
@@ -122,7 +124,7 @@ function VisitorCard({
           </button>
           <a
             href={`/profile/${visitor.userId}`}
-            className="px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-xl text-xs font-semibold hover:border-primary-700/40 hover:text-primary-700 transition-colors text-center"
+            className="flex-1 sm:flex-initial px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-xl text-xs font-semibold hover:border-primary-700/40 hover:text-primary-700 transition-colors text-center"
           >
             View Profile
           </a>
@@ -188,15 +190,15 @@ export default function VisitorsPage() {
     <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-neutral-900">Profile Visitors</h1>
           <p className="text-sm text-neutral-500 mt-0.5">
             {total > 0 ? `${total} people viewed your profile` : 'See who viewed your profile'}
           </p>
         </div>
         {total > 0 && (
-          <div className="bg-primary-50 border border-primary-200 rounded-xl px-3 py-2 text-center">
+          <div className="bg-primary-50 border border-primary-200 rounded-xl px-3 py-2 text-center flex-shrink-0">
             <p className="text-lg font-bold text-primary-700">{total}</p>
             <p className="text-[10px] text-primary-600 font-medium">Visitors</p>
           </div>

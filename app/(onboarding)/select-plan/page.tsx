@@ -164,7 +164,7 @@ export default function SelectPlanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex flex-col items-center justify-center p-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex flex-col items-center justify-center p-3 sm:p-4 py-8 sm:py-10">
 
       {/* Header */}
       <div className="text-center mb-8 max-w-xl">
@@ -172,7 +172,7 @@ export default function SelectPlanPage() {
           <Heart className="w-3.5 h-3.5 text-[#6B1B3D]" fill="currentColor" />
           <span className="text-xs font-semibold text-[#6B1B3D]">Almost there — choose your plan</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-neutral-900 mb-3">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 mb-3">
           How do you want to find<br />your perfect match?
         </h1>
         <p className="text-neutral-500 text-sm leading-relaxed">
@@ -182,7 +182,7 @@ export default function SelectPlanPage() {
       </div>
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full max-w-5xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-5xl">
         {PLANS.map((plan) => {
           const colors    = COLOR_MAP[plan.color];
           const Icon      = plan.icon;

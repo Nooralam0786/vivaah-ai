@@ -14,12 +14,12 @@ export default function VisitorsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Who Viewed Me</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Who Viewed Me</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track profile view records and visitor analytics</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center flex-shrink-0">
           <Eye size={18} className="text-purple-500" />
         </div>
       </div>

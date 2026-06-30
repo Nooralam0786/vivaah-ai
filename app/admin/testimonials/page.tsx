@@ -37,18 +37,18 @@ export default function TestimonialsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Testimonials</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Testimonials</h1>
           <p className="text-sm text-gray-500 mt-0.5">User reviews and testimonials management</p>
         </div>
-        <button disabled className="flex items-center gap-2 px-4 py-2 bg-[#6B1B3D]/50 text-white rounded-xl text-sm font-semibold cursor-not-allowed">
+        <button disabled className="flex items-center justify-center gap-2 px-4 py-2 bg-[#6B1B3D]/50 text-white rounded-xl text-sm font-semibold cursor-not-allowed self-start sm:self-auto">
           <Plus size={15} /> Add Testimonial
         </button>
       </div>
 
       {/* Coming Soon Banner */}
-      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-[#6B1B3D] to-[#9B2D5F] rounded-2xl p-4 sm:p-6 text-white">
         <div className="flex items-center gap-3 mb-2">
           <Clock size={20} className="text-[#D4AF37]" />
           <span className="text-[#D4AF37] font-bold text-sm tracking-wide uppercase">Coming Soon</span>
@@ -62,18 +62,18 @@ export default function TestimonialsPage() {
       {/* Example testimonials */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 pointer-events-none select-none">
         {EXAMPLE_TESTIMONIALS.map((t, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B1B3D] to-[#9B2D5F] flex items-center justify-center text-white text-sm font-bold">
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B1B3D] to-[#9B2D5F] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                   {t.name[0]}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{t.name}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
                   <p className="text-[10px] text-gray-400">{t.city}</p>
                 </div>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t.approved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${t.approved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                 {t.approved ? 'Approved' : 'Pending'}
               </span>
             </div>

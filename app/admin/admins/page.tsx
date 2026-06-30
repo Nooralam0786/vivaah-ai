@@ -26,12 +26,12 @@ export default function AdminsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Admin Management</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Admin Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage who has access to the admin panel</p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-[#6B1B3D]/10 border border-[#6B1B3D]/20 flex items-center justify-center flex-shrink-0">
           <Shield size={18} className="text-[#6B1B3D]" />
         </div>
       </div>
@@ -49,7 +49,7 @@ export default function AdminsPage() {
 
       {/* Current Admins */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-bold text-gray-800">Current Admins</h3>
             <p className="text-xs text-gray-400 mt-0.5">{ADMINS.length} admin account{ADMINS.length !== 1 ? 's' : ''}</p>
@@ -61,7 +61,7 @@ export default function AdminsPage() {
 
         <div className="divide-y divide-gray-50">
           {ADMINS.map((a, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-5">
+            <div key={i} className="flex items-start sm:items-center gap-4 px-5 py-5 flex-wrap">
               {/* Avatar */}
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#6B1B3D] to-[#9B2D5F] flex items-center justify-center flex-shrink-0">
                 <Crown size={22} className="text-[#D4AF37]" />
@@ -82,7 +82,7 @@ export default function AdminsPage() {
                   <Mail size={11} className="text-gray-400" />
                   <p className="text-xs text-gray-500">{a.email}</p>
                 </div>
-                <div className="flex items-center gap-4 mt-2">
+                <div className="flex items-center gap-4 mt-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <Shield size={10} className="text-gray-400" />
                     <span className="text-[10px] text-gray-400">Admin since {a.since}</span>

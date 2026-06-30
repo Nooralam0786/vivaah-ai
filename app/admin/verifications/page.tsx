@@ -74,15 +74,15 @@ export default function AdminVerificationsPage() {
     <div className="space-y-5">
 
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Verifications</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">Verifications</h1>
         <p className="text-sm text-gray-500 mt-0.5">Review and approve identity verifications</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center flex-wrap">
         {STATUS_TABS.map(({ key, label, Icon, cls }) => (
           <button key={key} onClick={() => setStatus(key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40 ${
               status === key
                 ? 'bg-white text-gray-800 border-gray-200 shadow-sm'
                 : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-white/70'
@@ -91,7 +91,7 @@ export default function AdminVerificationsPage() {
             {label}
           </button>
         ))}
-        <div className="ml-auto flex items-center text-xs text-gray-500 bg-white border border-gray-200 px-3 py-2 rounded-xl shadow-sm">
+        <div className="sm:ml-auto flex items-center text-xs text-gray-500 bg-white border border-gray-200 px-3 py-2 rounded-xl shadow-sm">
           {total.toLocaleString('en-IN')} records
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function AdminVerificationsPage() {
                     </div>
 
                     {/* Steps */}
-                    <div className="mt-3 grid grid-cols-3 gap-3">
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { ok: rec.phoneVerified,               label: 'Phone',    sub: rec.phoneVerified ? 'Verified' : 'Pending'                      },
                         { ok: rec.idVerified,                  label: rec.idType ? rec.idType.replace('_', ' ').toUpperCase() : 'ID', sub: rec.idNumber ? `•••${rec.idNumber.slice(-4)}` : 'Not submitted' },
@@ -180,13 +180,13 @@ export default function AdminVerificationsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3">
-          <button onClick={() => { const p = page - 1; setPage(p); fetchRecords(p, status); }} disabled={page === 1}
-            className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm">
+          <button onClick={() => { const p = page - 1; setPage(p); fetchRecords(p, status); }} disabled={page === 1} aria-label="Previous page"
+            className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm text-gray-500">{page} / {totalPages}</span>
-          <button onClick={() => { const p = page + 1; setPage(p); fetchRecords(p, status); }} disabled={page >= totalPages}
-            className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm">
+          <button onClick={() => { const p = page + 1; setPage(p); fetchRecords(p, status); }} disabled={page >= totalPages} aria-label="Next page"
+            className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-30 hover:bg-gray-50 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-[#6B1B3D]/40">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
