@@ -2,9 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  /* Standalone output — smaller Docker/Railway image */
-  output: 'standalone',
-
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.amazonaws.com' },
