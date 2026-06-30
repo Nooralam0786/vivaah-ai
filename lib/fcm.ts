@@ -22,7 +22,7 @@ function getFirebaseApp(): App | null {
 
   try {
     // Dynamic import to avoid loading firebase-admin at build time on client bundles
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const admin = require('firebase-admin');
     if (admin.apps.length > 0) {
       firebaseApp = admin.apps[0];
@@ -59,7 +59,7 @@ export async function sendPushNotification(
   if (!app) return; // Firebase not configured — skip silently
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { getMessaging } = require('firebase-admin/messaging');
     await getMessaging(app).send({
       token: fcmToken,

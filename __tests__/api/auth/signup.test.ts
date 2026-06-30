@@ -15,6 +15,9 @@ jest.mock('@/lib/db', () => ({
       findFirst: jest.fn(),
       create:    jest.fn(),
     },
+    auditLog: {
+      create: jest.fn().mockResolvedValue(undefined),
+    },
   },
 }));
 
