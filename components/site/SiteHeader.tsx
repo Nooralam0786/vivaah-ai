@@ -86,7 +86,10 @@ export default function SiteHeader() {
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-neutral-200 hover:border-[#7A0026]/30 hover:bg-[#7A0026]/5 transition-all"
+                aria-label="Open account menu"
+                aria-expanded={profileOpen}
+                aria-haspopup="true"
+                className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-neutral-200 hover:border-[#7A0026]/30 hover:bg-[#7A0026]/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0026]/50"
               >
                 <div className="w-7 h-7 rounded-full bg-[#7A0026] flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
                   {photoUrl
@@ -150,11 +153,13 @@ export default function SiteHeader() {
         </div>
 
         <button
-          className="lg:hidden p-2 text-neutral-600"
-          aria-label="Toggle navigation menu"
+          className="lg:hidden p-2 text-neutral-600 rounded-lg hover:bg-neutral-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0026]/50"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          aria-controls="site-mobile-menu"
           onClick={() => setMenuOpen((open) => !open)}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             {menuOpen ? (
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
@@ -164,50 +169,62 @@ export default function SiteHeader() {
         </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu overlay */}
       {menuOpen && (
-        <div className="lg:hidden bg-white border-t border-neutral-100 px-4 pb-4">
+        <div
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+          aria-hidden="true"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile menu panel */}
+      <div
+        id="site-mobile-menu"
+        className={`lg:hidden bg-white border-t border-neutral-100 px-4 pb-5 relative z-50 transition-all duration-200 ${menuOpen ? 'block' : 'hidden'}`}
+      >
+        <nav aria-label="Mobile navigation">
           {NAV_LINKS.map(({ label, href }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setMenuOpen(false)}
-              className={`block py-2 text-sm ${
+              className={`block py-3 text-sm border-b border-neutral-50 last:border-0 transition-colors ${
                 isActive(href) ? "text-[#7A0026] font-semibold" : "text-neutral-600 hover:text-[#7A0026]"
               }`}
             >
               {label}
             </Link>
           ))}
-          {!isLoading && (
-            <div className="flex gap-3 mt-3">
-              {isAuthenticated ? (
-                <>
-                  <Link href="/dashboard" onClick={() => setMenuOpen(false)}
-                    className="flex-1 text-center text-sm font-semibold border border-[#7A0026] text-[#7A0026] py-2 rounded-lg">
-                    Dashboard
-                  </Link>
-                  <button onClick={handleLogout}
-                    className="flex-1 text-center text-sm font-semibold text-white bg-red-600 py-2 rounded-lg">
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" onClick={() => setMenuOpen(false)}
-                    className="flex-1 text-center text-sm font-semibold border border-[#7A0026] text-[#7A0026] py-2 rounded-lg">
-                    Log In
-                  </Link>
-                  <Link href="/signup" onClick={() => setMenuOpen(false)}
-                    className="flex-1 text-center text-sm font-semibold text-white bg-[#7A0026] py-2 rounded-lg">
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        </nav>
+        {!isLoading && (
+          <div className="flex gap-3 mt-4">
+            {isAuthenticated ? (
+              <>
+                <Link href="/dashboard" onClick={() => setMenuOpen(false)}
+                  className="flex-1 text-center text-sm font-semibold border border-[#7A0026] text-[#7A0026] py-2.5 rounded-xl hover:bg-[#7A0026]/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0026]/50">
+                  Dashboard
+                </Link>
+                <button onClick={handleLogout}
+                  className="flex-1 text-center text-sm font-semibold text-white bg-red-600 hover:bg-red-700 py-2.5 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50">
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setMenuOpen(false)}
+                  className="flex-1 text-center text-sm font-semibold border border-[#7A0026] text-[#7A0026] py-2.5 rounded-xl hover:bg-[#7A0026]/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0026]/50">
+                  Log In
+                </Link>
+                <Link href="/signup" onClick={() => setMenuOpen(false)}
+                  className="flex-1 text-center text-sm font-semibold text-white bg-[#7A0026] hover:bg-[#5a0020] py-2.5 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0026]/50">
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

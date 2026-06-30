@@ -68,15 +68,8 @@ export default function PhotoUploadPage() {
         body: JSON.stringify({ photos: urls, photo: urls[0] }),
       });
 
-      // Advance onboarding to complete
-      await fetch('/api/users/onboarding', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ step: 'complete' }),
-      });
-
       await refreshUser();
-      router.push('/dashboard');
+      router.push('/select-plan');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload photos. Please try again.');
       setUploadProgress('');
@@ -86,12 +79,12 @@ export default function PhotoUploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-6">
           <p className="text-xs font-semibold text-[#7A0026] uppercase tracking-wider mb-1">Step 5 of 5 — Photos</p>
-          <h1 className="text-2xl font-extrabold text-neutral-900">Add Your Photos</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-neutral-900">Add Your Photos</h1>
           <p className="text-sm text-neutral-500 mt-1">Profiles with photos get up to 10× more matches</p>
         </div>
 
@@ -100,7 +93,7 @@ export default function PhotoUploadPage() {
           <div className="bg-[#7A0026] h-2 rounded-full w-full transition-all duration-500" />
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl shadow-[#7A0026]/8 p-6 sm:p-8">
+        <div className="bg-white rounded-3xl shadow-2xl shadow-[#7A0026]/8 p-4 sm:p-6 md:p-8">
           {/* Drop zone */}
           {photos.length < MAX_PHOTOS && (
             <div
@@ -108,7 +101,7 @@ export default function PhotoUploadPage() {
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onClick={() => inputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all mb-6
+              className={`border-2 border-dashed rounded-2xl p-5 sm:p-8 text-center cursor-pointer transition-all mb-6
                 ${dragging ? 'border-[#7A0026] bg-[#FAF0F3]' : 'border-neutral-200 hover:border-[#7A0026]/40 hover:bg-neutral-50'}`}
             >
               <input
@@ -116,6 +109,7 @@ export default function PhotoUploadPage() {
                 type="file" multiple accept="image/*"
                 className="hidden"
                 onChange={(e) => processFiles(Array.from(e.target.files ?? []))}
+                aria-label="Upload photos"
               />
               <div className="w-14 h-14 bg-[#FAF0F3] rounded-2xl flex items-center justify-center mx-auto mb-3">
                 {dragging ? <ImagePlus className="w-7 h-7 text-[#7A0026]" /> : <UploadCloud className="w-7 h-7 text-[#7A0026]" />}
@@ -137,7 +131,7 @@ export default function PhotoUploadPage() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {photos.map((p, i) => (
                   <div key={p.url} className="relative aspect-square rounded-xl overflow-hidden group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -149,15 +143,16 @@ export default function PhotoUploadPage() {
                     )}
                     <button
                       onClick={() => onRemove(i)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute top-1.5 right-1.5 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity shadow"
                     >
-                      <X className="w-3.5 h-3.5 text-neutral-700" />
+                      <X className="w-4 h-4 text-neutral-700" />
                     </button>
                   </div>
                 ))}
                 {/* Empty slot hints */}
                 {Array.from({ length: Math.min(2, MAX_PHOTOS - photos.length) }).map((_, i) => (
-                  <button key={i} onClick={() => inputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center hover:border-[#7A0026]/40 transition-colors">
+                  <button key={i} onClick={() => inputRef.current?.click()} aria-label="Add photo" className="aspect-square rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center hover:border-[#7A0026]/40 transition-colors">
                     <ImagePlus className="w-6 h-6 text-neutral-300" />
                   </button>
                 ))}
@@ -180,10 +175,10 @@ export default function PhotoUploadPage() {
 
           {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 mb-4">{error}</div>}
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               onClick={() => router.push('/profile-wizard')}
-              className="text-sm text-neutral-500 hover:text-[#7A0026] font-medium transition-colors"
+              className="order-2 sm:order-1 text-sm text-neutral-500 hover:text-[#7A0026] font-medium transition-colors"
             >
               ← Back to Profile
             </button>
@@ -191,7 +186,7 @@ export default function PhotoUploadPage() {
             <button
               onClick={handleFinish}
               disabled={saving || photos.length === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-[#7A0026] hover:bg-[#A10035] text-white rounded-xl text-sm font-bold transition-all disabled:opacity-60"
+              className="order-1 sm:order-2 w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#7A0026] hover:bg-[#A10035] text-white rounded-xl text-sm font-bold transition-all disabled:opacity-60"
             >
               {saving ? (
                 <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">

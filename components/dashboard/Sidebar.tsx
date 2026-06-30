@@ -3,29 +3,39 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Compass, Heart, MessageSquare, Link2,
-  Eye, Bookmark, Users, User, Crown, Settings, HelpCircle,
+  Eye, Bookmark, Users, User, Crown, Settings, HelpCircle, ShieldCheck, LayoutGrid, Sparkles, Zap, Gift, Star, type LucideIcon,
 } from 'lucide-react';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { href: '/discover', label: 'Discover', Icon: Compass },
-  { href: '/matches', label: 'Matches', Icon: Heart },
-  { href: '/messages', label: 'Messages', Icon: MessageSquare, badge: 12 },
-  { href: '/connections', label: 'Connections', Icon: Link2 },
-  { href: '/visitors', label: 'Visitors', Icon: Eye, badge: 5 },
-  { href: '/bookmarks', label: 'Bookmarks', Icon: Bookmark },
-  { href: '/family-connect', label: 'Family Connect', Icon: Users },
-  { href: '/profile', label: 'Profile', Icon: User },
-  { href: '/premium-benefits', label: 'Premium Benefits', Icon: Crown },
-  { href: '/settings', label: 'Settings', Icon: Settings },
-  { href: '/help', label: 'Help & Support', Icon: HelpCircle },
+const ADMIN_EMAILS = ['arun@techotd.com'];
+
+const navItems: { href: string; label: string; Icon: LucideIcon; badge?: string }[] = [
+  { href: '/dashboard',       label: 'Dashboard',       Icon: LayoutDashboard },
+  { href: '/discover',        label: 'Discover',        Icon: Compass },
+  { href: '/top-picks',       label: 'Top Picks',       Icon: Sparkles, badge: 'AI' },
+  { href: '/matches',         label: 'Matches',         Icon: Heart },
+  { href: '/boost',           label: 'Boost Profile',   Icon: Zap,  badge: '₹99' },
+  { href: '/referral',        label: 'Invite & Earn',   Icon: Gift, badge: 'FREE' },
+  { href: '/submit-story',    label: 'Share Your Story', Icon: Star },
+  { href: '/messages',        label: 'Messages',        Icon: MessageSquare },
+  { href: '/connections',     label: 'Connections',     Icon: Link2 },
+  { href: '/visitors',        label: 'Visitors',        Icon: Eye },
+  { href: '/bookmarks',       label: 'Bookmarks',       Icon: Bookmark },
+  { href: '/family-connect',  label: 'Family Connect',  Icon: Users },
+  { href: '/profile',         label: 'Profile',         Icon: User },
+  { href: '/verification',    label: 'Get Verified',    Icon: ShieldCheck, badge: 'NEW' },
+  { href: '/premium-benefits',label: 'Premium Benefits',Icon: Crown },
+  { href: '/settings',        label: 'Settings',        Icon: Settings },
+  { href: '/help',            label: 'Help & Support',  Icon: HelpCircle },
 ];
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '');
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -56,7 +66,7 @@ export default function DashboardSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-700/50 ${
                   isActive
                     ? 'bg-primary-700 text-white shadow-sm'
                     : 'text-neutral-500 hover:bg-vivaah-muted hover:text-primary-700'
@@ -68,9 +78,12 @@ export default function DashboardSidebar() {
                   }`}
                 />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-primary-700 text-white'
+                {item.badge && !isActive && (
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                    item.badge === 'AI'  ? 'bg-[#D4AF37]/20 text-[#8B6914]' :
+                    item.badge === '₹99'  ? 'bg-orange-100 text-orange-700' :
+                    item.badge === 'FREE' ? 'bg-green-100 text-green-700'  :
+                    'bg-green-100 text-green-700'
                   }`}>
                     {item.badge}
                   </span>
@@ -79,6 +92,20 @@ export default function DashboardSidebar() {
             );
           })}
         </div>
+
+        {/* Admin Panel link — visible only to admin emails */}
+        {isAdmin && (
+          <div className="px-3 pt-2 border-t border-vivaah-border">
+            <Link
+              href="/admin"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-neutral-900 text-amber-400 hover:bg-neutral-800 transition-colors border border-neutral-700/60"
+            >
+              <LayoutGrid size={18} className="flex-shrink-0" />
+              <span>Admin Panel</span>
+              <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 bg-amber-400/20 text-amber-400 rounded-full">ADMIN</span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* Go Premium CTA */}
@@ -92,7 +119,7 @@ export default function DashboardSidebar() {
             Unlock all features and get better matches.
           </p>
           <Link
-            href="/premium-benefits"
+            href="/upgrade"
             className="flex items-center justify-center gap-1.5 w-full py-2 px-4 bg-gold-gradient text-neutral-900 text-xs font-bold rounded-lg hover:opacity-90 transition-opacity">
             Upgrade Now →
           </Link>
@@ -106,8 +133,11 @@ export default function DashboardSidebar() {
       {/* Mobile Toggle */}
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-50 w-9 h-9 bg-white border border-vivaah-border rounded-xl flex items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-neutral-600">
+        aria-label="Open navigation menu"
+        aria-expanded={open}
+        aria-controls="mobile-sidebar"
+        className="lg:hidden fixed top-3 left-3 z-50 w-9 h-9 bg-white border border-vivaah-border rounded-xl flex items-center justify-center shadow-sm hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-700/50">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-neutral-600" aria-hidden="true">
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="12" x2="21" y2="12" />
           <line x1="3" y1="18" x2="21" y2="18" />
@@ -116,18 +146,38 @@ export default function DashboardSidebar() {
 
       {/* Mobile Overlay */}
       {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
         </div>
       )}
 
       {/* Mobile Sidebar */}
-      <div className={`fixed top-0 left-0 h-screen w-64 bg-white z-50 flex flex-col shadow-2xl transition-transform duration-300 lg:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div
+        id="mobile-sidebar"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        className={`fixed top-0 left-0 h-dvh w-64 bg-white z-50 flex flex-col shadow-2xl transition-transform duration-300 lg:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        {/* Close button inside mobile drawer */}
+        <button
+          onClick={() => setOpen(false)}
+          aria-label="Close navigation menu"
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-vivaah-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-700/50"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <SidebarContent />
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 bg-white border-r border-vivaah-border flex-col z-30 shadow-sm">
+      <aside className="hidden lg:flex lg:fixed lg:top-0 lg:left-0 lg:h-dvh lg:w-64 bg-white border-r border-vivaah-border flex-col z-30 shadow-sm">
         <SidebarContent />
       </aside>
     </>

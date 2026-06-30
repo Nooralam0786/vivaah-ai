@@ -30,9 +30,8 @@ export default function BookmarksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const auth = getAuthFromStorage();
-
   useEffect(() => {
+    const auth = getAuthFromStorage();
     if (!auth) {
       setLoading(false);
       setError('Please log in to see your saved profiles.');
@@ -46,11 +45,23 @@ export default function BookmarksPage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load bookmarks'))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const sendInterest = async (b: BookmarkedProfile) => {
+    const auth = getAuthFromStorage();
+    if (!auth) return;
+    try {
+      await fetch('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
+        body: JSON.stringify({ targetUserId: b.userId }),
+      });
+    } catch { /* non-fatal */ }
+  };
 
   const remove = async (b: BookmarkedProfile) => {
     setBookmarks((prev) => prev.filter((x) => x.id !== b.id));
+    const auth = getAuthFromStorage();
     if (!auth) return;
     try {
       await fetch(`/api/bookmarks?targetUserId=${b.userId}`, {
@@ -63,14 +74,28 @@ export default function BookmarksPage() {
   };
 
   if (loading) {
-    return <div className="max-w-7xl mx-auto"><p className="text-sm text-neutral-400">Loading your saved profiles…</p></div>;
+    return (
+      <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden animate-pulse">
+              <div className="aspect-[3/4] bg-neutral-200" />
+              <div className="p-3 space-y-2">
+                <div className="h-3.5 bg-neutral-200 rounded w-3/4" />
+                <div className="h-3 bg-neutral-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="max-w-7xl mx-auto text-center py-16 text-neutral-400">
         <p className="font-medium text-neutral-600">{error}</p>
-        {!auth && <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>}
+        <a href="/login" className="text-sm mt-2 inline-block text-primary-700 font-semibold hover:underline">Go to login</a>
       </div>
     );
   }
@@ -94,7 +119,7 @@ export default function BookmarksPage() {
                 <div className="absolute inset-0 bg-card-gradient" />
                 <button onClick={() => remove(b)}
                   className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-red-500/80 transition-colors text-xs"
-                  title="Remove bookmark">
+                  title="Remove bookmark" aria-label="Remove bookmark">
                   🗑️
                 </button>
                 <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -107,12 +132,16 @@ export default function BookmarksPage() {
                 </div>
               </div>
               <div className="p-3 flex gap-2">
-                <button className="flex-1 py-2 border border-primary-700 text-primary-700 rounded-xl text-xs font-semibold hover:bg-primary-50 transition-colors">
+                <button
+                  onClick={() => sendInterest(b)}
+                  className="flex-1 py-2 border border-primary-700 text-primary-700 rounded-xl text-xs font-semibold hover:bg-primary-50 transition-colors">
                   🤍 Send Interest
                 </button>
-                <button className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90">
+                <a
+                  href={`/profile/${b.userId}`}
+                  className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90 flex items-center justify-center">
                   View Profile
-                </button>
+                </a>
               </div>
             </div>
           ))}

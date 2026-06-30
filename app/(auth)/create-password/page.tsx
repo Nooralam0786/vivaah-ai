@@ -73,27 +73,27 @@ export default function CreatePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAF0F3] via-white to-[#FFF8F0] flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
 
         {/* Step indicator */}
-        <div className="flex items-center justify-center gap-0 mb-8">
+        <div className="flex items-center justify-center gap-0 mb-6 sm:mb-8 overflow-x-auto">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center">
+            <div key={s} className="flex items-center flex-shrink-0">
               <div className={`flex flex-col items-center ${i === 2 ? 'opacity-100' : i < 2 ? 'opacity-60' : 'opacity-35'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${i === 2 ? 'bg-[#7A0026] border-[#7A0026] text-white' : i < 2 ? 'bg-[#7A0026]/20 border-[#7A0026]/40 text-[#7A0026]' : 'border-neutral-300 text-neutral-400 bg-white'}`}>
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${i === 2 ? 'bg-[#7A0026] border-[#7A0026] text-white' : i < 2 ? 'bg-[#7A0026]/20 border-[#7A0026]/40 text-[#7A0026]' : 'border-neutral-300 text-neutral-400 bg-white'}`}>
                   {i < 2 ? '✓' : i + 1}
                 </div>
-                <span className={`text-[10px] mt-1 font-medium ${i === 2 ? 'text-[#7A0026]' : 'text-neutral-400'}`}>{s}</span>
+                <span className={`hidden xs:block text-[10px] mt-1 font-medium ${i === 2 ? 'text-[#7A0026]' : 'text-neutral-400'}`}>{s}</span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`w-10 sm:w-16 h-0.5 mb-4 mx-1 ${i < 2 ? 'bg-[#7A0026]/50' : 'bg-neutral-200'}`} />
+                <div className={`w-6 sm:w-16 h-0.5 mb-0 xs:mb-4 mx-1 ${i < 2 ? 'bg-[#7A0026]/50' : 'bg-neutral-200'}`} />
               )}
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl shadow-[#7A0026]/8 p-8">
+        <div className="bg-white rounded-3xl shadow-2xl shadow-[#7A0026]/8 p-5 sm:p-8">
           {/* Logo */}
           <div className="flex items-center justify-between mb-6">
             <Link href="/" className="inline-flex items-center gap-2 hover:opacity-90 transition-opacity">

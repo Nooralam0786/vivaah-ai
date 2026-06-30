@@ -93,6 +93,111 @@ export async function sendPasswordResetEmail(email: string, otp: string): Promis
   });
 }
 
+export async function sendPaymentReceiptEmail(
+  email: string,
+  fullName: string,
+  tier: string,
+  amount: number,
+  paymentId: string,
+  expiresAt: string,
+): Promise<void> {
+  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+  const amountStr = `₹${(amount / 100).toLocaleString('en-IN')}`;
+  const expiry    = new Date(expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  if (!isConfigured()) {
+    console.log(`\n[Email] Payment receipt for ${email}: ${tierLabel} plan, ${amountStr}`);
+    return;
+  }
+
+  await createTransporter().sendMail({
+    from: FROM,
+    to: email,
+    subject: `Payment Confirmed — ${tierLabel} Plan Active ✓`,
+    html: `
+      <!DOCTYPE html><html>
+      <body style="margin:0;padding:0;background:#f9f0f3;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f0f3;padding:40px 0;">
+          <tr><td align="center">
+            <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(107,27,61,0.08);">
+              <tr><td style="background:#6B1B3D;padding:28px 32px;text-align:center;">
+                <span style="color:#D4AF37;font-size:22px;font-weight:800;letter-spacing:1px;">❤ VivaahAI</span>
+              </td></tr>
+              <tr><td style="padding:36px 32px;">
+                <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:20px;">Payment Successful! 🎉</h2>
+                <p style="margin:0 0 24px;color:#666;font-size:14px;">Hi ${fullName}, your ${tierLabel} plan is now active.</p>
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf6f9;border-radius:12px;padding:20px;margin-bottom:24px;">
+                  <tr><td style="padding:6px 0;color:#888;font-size:13px;">Plan</td><td style="padding:6px 0;color:#1a1a1a;font-size:13px;font-weight:700;text-align:right;">${tierLabel}</td></tr>
+                  <tr><td style="padding:6px 0;color:#888;font-size:13px;">Amount Paid</td><td style="padding:6px 0;color:#6B1B3D;font-size:16px;font-weight:800;text-align:right;">${amountStr}</td></tr>
+                  <tr><td style="padding:6px 0;color:#888;font-size:13px;">Payment ID</td><td style="padding:6px 0;color:#1a1a1a;font-size:12px;text-align:right;">${paymentId}</td></tr>
+                  <tr><td style="padding:6px 0;color:#888;font-size:13px;">Valid Until</td><td style="padding:6px 0;color:#1a1a1a;font-size:13px;font-weight:600;text-align:right;">${expiry}</td></tr>
+                </table>
+                <p style="margin:0;color:#666;font-size:13px;line-height:1.6;">Login to VivaahAI and start exploring your premium features. For any issues, reply to this email.</p>
+              </td></tr>
+              <tr><td style="background:#fdf6f9;padding:16px 32px;text-align:center;border-top:1px solid #f0e0e8;">
+                <p style="margin:0;color:#aaa;font-size:12px;">© ${new Date().getFullYear()} VivaahAI — India's AI-powered matrimonial platform</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body></html>
+    `,
+    text: `Payment confirmed! Your ${tierLabel} plan is active. Amount: ${amountStr}. Payment ID: ${paymentId}. Valid until: ${expiry}.`,
+  });
+}
+
+export async function sendMatchNotificationEmail(
+  email: string,
+  recipientName: string,
+  likerName: string,
+  isMutual: boolean,
+): Promise<void> {
+  if (!isConfigured()) {
+    console.log(`[Email] Match notification for ${email}: ${likerName} liked you (mutual: ${isMutual})`);
+    return;
+  }
+
+  const subject = isMutual
+    ? `🎉 It's a Match! You and ${likerName} liked each other`
+    : `💕 ${likerName} is interested in you on VivaahAI`;
+
+  await createTransporter().sendMail({
+    from: FROM,
+    to: email,
+    subject,
+    html: `
+      <!DOCTYPE html><html>
+      <body style="margin:0;padding:0;background:#f9f0f3;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f0f3;padding:40px 0;">
+          <tr><td align="center">
+            <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(107,27,61,0.08);">
+              <tr><td style="background:#6B1B3D;padding:28px 32px;text-align:center;">
+                <span style="color:#D4AF37;font-size:22px;font-weight:800;letter-spacing:1px;">❤ VivaahAI</span>
+              </td></tr>
+              <tr><td style="padding:36px 32px;text-align:center;">
+                <div style="font-size:48px;margin-bottom:16px;">${isMutual ? '🎉' : '💕'}</div>
+                <h2 style="margin:0 0 12px;color:#1a1a1a;font-size:22px;">${isMutual ? "It's a Match!" : 'Someone liked you!'}</h2>
+                <p style="margin:0 0 24px;color:#666;font-size:15px;line-height:1.6;">
+                  Hi ${recipientName}, <strong style="color:#6B1B3D;">${likerName}</strong> ${isMutual ? 'and you liked each other! Start chatting now.' : 'has shown interest in your profile.'}
+                </p>
+                <a href="https://vivaah.ai/matches" style="display:inline-block;background:#6B1B3D;color:#fff;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;">
+                  ${isMutual ? 'Start Chatting' : 'View Profile'}
+                </a>
+              </td></tr>
+              <tr><td style="background:#fdf6f9;padding:16px 32px;text-align:center;border-top:1px solid #f0e0e8;">
+                <p style="margin:0;color:#aaa;font-size:12px;">© ${new Date().getFullYear()} VivaahAI — India's AI-powered matrimonial platform</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body></html>
+    `,
+    text: isMutual
+      ? `It's a match! You and ${likerName} liked each other on VivaahAI. Open the app to start chatting.`
+      : `${likerName} liked your profile on VivaahAI. Login to view their profile.`,
+  });
+}
+
 export async function sendWelcomeEmail(email: string, fullName: string): Promise<void> {
   if (!isConfigured()) return;
 

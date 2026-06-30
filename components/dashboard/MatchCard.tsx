@@ -33,7 +33,7 @@ function scoreBg(pct: number) {
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden animate-pulse">
-      <div style={{ aspectRatio: '3/2.5' }} className="bg-neutral-200" />
+      <div className="aspect-[3/2.5] bg-neutral-200" />
       <div className="px-2.5 pt-2 pb-2 space-y-1.5">
         <div className="h-3 bg-neutral-200 rounded w-3/4" />
         <div className="h-2.5 bg-neutral-100 rounded w-1/2" />
@@ -68,7 +68,7 @@ function MatchCard({ match }: { match: ApiMatch; index?: number }) {
   return (
     <div className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden group w-full flex flex-col">
       {/* Photo */}
-      <div className="relative overflow-hidden" style={{ aspectRatio: '3/2.5' }}>
+      <div className="relative overflow-hidden aspect-[3/2.5]">
         {match.photo && !imgErr ? (
           <img
             src={match.photo}
@@ -97,7 +97,9 @@ function MatchCard({ match }: { match: ApiMatch; index?: number }) {
           )}
           <button
             onClick={handleLike}
-            className="w-7 h-7 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/60 transition-colors"
+            aria-label={liked ? 'Unlike profile' : 'Like profile'}
+            aria-pressed={liked}
+            className="w-7 h-7 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <Heart size={13} className={liked ? 'text-rose-400 fill-rose-400' : 'text-white'} />
           </button>
@@ -105,9 +107,9 @@ function MatchCard({ match }: { match: ApiMatch; index?: number }) {
       </div>
 
       {/* Info */}
-      <div className="px-2.5 pt-1.5 pb-1">
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] font-bold text-neutral-900 leading-tight truncate">
+      <div className="px-2.5 pt-1.5 pb-1 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-[11px] font-bold text-neutral-900 leading-tight truncate min-w-0">
             {match.name}{match.age ? `, ${match.age}` : ''}
           </span>
           {match.isVerified && (
@@ -118,9 +120,9 @@ function MatchCard({ match }: { match: ApiMatch; index?: number }) {
           <p className="text-[10px] text-neutral-500 truncate">{match.profession}</p>
         )}
         {match.location && (
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 min-w-0">
             <MapPin size={8} className="text-neutral-400 flex-shrink-0" />
-            <p className="text-[10px] text-neutral-400 truncate">{match.location}</p>
+            <p className="text-[10px] text-neutral-400 truncate min-w-0">{match.location}</p>
           </div>
         )}
       </div>

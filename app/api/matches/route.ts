@@ -21,6 +21,10 @@ import {
   type CurrentUserContext,
   type CandidateProfile,
 } from '@/services/matching.engine';
+import { readApiLimit, writeApiLimit } from '@/lib/api-rate-limit';
+import { cacheGet, cacheSet, cacheDel, CacheKeys, CacheTTL } from '@/lib/cache';
+import { sendMatchNotificationEmail } from '@/lib/email';
+import { createLikeNotification, createMatchNotification } from '@/lib/notifications';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,6 +111,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const rl = await readApiLimit(req, `matches-get:${userId}`);
+    if (rl) return rl;
+
     const { searchParams } = new URL(req.url);
     const page      = Math.max(1, parseInt(searchParams.get('page')  ?? '1',  10));
     const limit     = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)));
@@ -115,6 +122,13 @@ export async function GET(req: NextRequest) {
     const fState    = searchParams.get('state')    ?? '';
     const fMinAge   = searchParams.get('minAge')   ? parseInt(searchParams.get('minAge')!,  10) : null;
     const fMaxAge   = searchParams.get('maxAge')   ? parseInt(searchParams.get('maxAge')!,  10) : null;
+
+    // ── Cache: serve cached result for default tab, page 1, no filters ────────
+    const isDefaultQuery = tab === 'new' && page === 1 && !fReligion && !fState && fMinAge === null && fMaxAge === null;
+    if (isDefaultQuery) {
+      const cached = await cacheGet<object>(CacheKeys.matches(`matches:${userId}`));
+      if (cached) return NextResponse.json(cached);
+    }
 
     // ── 1. Current user data ──────────────────────────────────────────────────
     const currentUser = await prisma.user.findUnique({
@@ -327,11 +341,18 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data:    { matches, total, page, limit, totalPages },
       meta:    { timestamp: new Date().toISOString(), requestId: requestId() },
-    });
+    };
+
+    // Cache default-query result for 5 min
+    if (isDefaultQuery) {
+      cacheSet(CacheKeys.matches(`matches:${userId}`), response, CacheTTL.MATCHES).catch(() => {});
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('[GET /api/matches]', error);
     return NextResponse.json(
@@ -353,6 +374,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const rl = await writeApiLimit(req, `matches-like:${userId}`);
+    if (rl) return rl;
+
     const body = await req.json();
     const targetUserId: unknown = body?.targetUserId;
     if (typeof targetUserId !== 'string' || !targetUserId) {
@@ -368,6 +392,12 @@ export async function POST(req: NextRequest) {
       create: { fromUserId: userId, toUserId: targetUserId },
     });
 
+    // Invalidate matches cache for both users (their ranked lists have changed)
+    cacheDel(CacheKeys.matches(`matches:${userId}`)).catch(() => {});
+    cacheDel(CacheKeys.matches(`matches:${targetUserId}`)).catch(() => {});
+    cacheDel(CacheKeys.matches(userId)).catch(() => {});
+    cacheDel(CacheKeys.matches(targetUserId)).catch(() => {});
+
     const reciprocal = await prisma.like.findUnique({
       where: { fromUserId_toUserId: { fromUserId: targetUserId, toUserId: userId } },
     });
@@ -378,6 +408,22 @@ export async function POST(req: NextRequest) {
         where: { userAId: userId, userBId: targetUserId },
         data:  { tag: 'mutual' },
       });
+    }
+
+    /* Notify the target user — fire-and-forget */
+    const [liker, likerProfile, target] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId },       select: { fullName: true } }),
+      prisma.profile.findUnique({ where: { userId },        select: { photo: true } }),
+      prisma.user.findUnique({ where: { id: targetUserId }, select: { fullName: true, email: true } }),
+    ]);
+    if (liker && target) {
+      sendMatchNotificationEmail(target.email, target.fullName, liker.fullName, isMutual).catch(() => {});
+      if (isMutual) {
+        createMatchNotification(targetUserId, userId, liker.fullName, likerProfile?.photo ?? null).catch(() => {});
+        createMatchNotification(userId, targetUserId, target.fullName, null).catch(() => {});
+      } else {
+        createLikeNotification(targetUserId, userId, liker.fullName, likerProfile?.photo ?? null).catch(() => {});
+      }
     }
 
     return NextResponse.json({

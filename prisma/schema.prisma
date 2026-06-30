@@ -1,12 +1,9 @@
-// VivaahAI — local development database (SQLite via Prisma)
-// Swapping to Postgres later only requires changing `provider` + `DATABASE_URL`.
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = env("DATABASE_PROVIDER") // "sqlite" (dev) | "postgresql" (prod)
   url      = env("DATABASE_URL")
 }
 
@@ -19,11 +16,16 @@ model User {
   phoneVerified  Boolean  @default(false)
   onboardingStep String   @default("complete")
   gender         String?
+  referralCode   String   @unique @default(cuid())
+  referredBy     String?
+  e2ePublicKey   String?  // X25519 public key for E2E message encryption (base64)
+  fcmToken       String?  // Firebase Cloud Messaging token for push notifications
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   profile         Profile?
   preference      Preference?
+  verification    Verification?
   subscriptions   Subscription[]
   contactMessages ContactMessage[]
 
@@ -31,6 +33,9 @@ model User {
   likesReceived  Like[]    @relation("LikesReceived")
   passesGiven    Pass[]    @relation("PassesGiven")
   passesReceived Pass[]    @relation("PassesReceived")
+
+  reportsMade     UserReport[] @relation("ReportsMade")
+  reportsReceived UserReport[] @relation("ReportsReceived")
   matchesA       Match[]   @relation("MatchUserA")
   matchesB       Match[]   @relation("MatchUserB")
   bookmarksMade      Bookmark[] @relation("BookmarkOwner")
@@ -42,6 +47,10 @@ model User {
 
   viewsGiven    ProfileView[] @relation("ViewsGiven")
   viewsReceived ProfileView[] @relation("ViewsReceived")
+
+  // Freemium daily match limit tracking
+  freeMatchesUsed Int    @default(0)
+  freeMatchesDate String @default("")
 }
 
 model OtpCode {
@@ -88,9 +97,10 @@ model Profile {
   drinkingHabit  String? // never | occasionally | regularly
   dietPreference String? // vegetarian | non-vegetarian | vegan | eggetarian
 
-  isVerified   Boolean   @default(false)
-  isOnline     Boolean   @default(false)
-  lastActiveAt DateTime?
+  isVerified    Boolean   @default(false)
+  isOnline      Boolean   @default(false)
+  lastActiveAt  DateTime?
+  boostExpiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -171,6 +181,9 @@ model Conversation {
   userBId   String
   createdAt DateTime @default(now())
 
+  userALastReadAt DateTime?
+  userBLastReadAt DateTime?
+
   userA User @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
   userB User @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
 
@@ -191,11 +204,16 @@ model Message {
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
-  userId    String
-  tier      String   // premium | elite
-  status    String   @default("pending") // pending | active | cancelled
-  createdAt DateTime @default(now())
+  id                 String    @id @default(cuid())
+  userId             String
+  tier               String    // free | gold | platinum | diamond
+  status             String    @default("pending") // pending | active | cancelled | failed
+  amount             Int       @default(0)         // in paise (₹499 = 49900)
+  razorpayOrderId    String?
+  razorpayPaymentId  String?
+  startedAt          DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -211,6 +229,111 @@ model ProfileView {
 
   @@index([profileId])
   @@index([viewerId])
+}
+
+model Verification {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phoneVerified  Boolean  @default(false)
+
+  idType         String?  // aadhaar | pan | passport | driving_license
+  idNumber       String?
+  idVerified     Boolean  @default(false)
+  idVerifiedAt   DateTime?
+
+  livenessStatus String   @default("not_started") // not_started | pending | approved | rejected
+  selfieUrl      String?
+  livenessAt     DateTime?
+
+  fraudScore     Int      @default(0)
+  overallStatus  String   @default("unverified") // unverified | pending | verified | rejected
+
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // like | match | message | view | referral | boost
+  title      String
+  body       String
+  fromUserId String?
+  fromName   String?
+  fromPhoto  String?
+  link       String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model ReferralReward {
+  id          String   @id @default(cuid())
+  referrerId  String
+  refereeId   String
+  status      String   @default("pending") // pending | rewarded
+  rewardDays  Int      @default(30)
+  createdAt   DateTime @default(now())
+  rewardedAt  DateTime?
+
+  @@unique([referrerId, refereeId])
+  @@index([referrerId])
+}
+
+model SuccessStory {
+  id            String   @id @default(cuid())
+  userId        String
+  partnerName   String
+  story         String
+  marriageDate  String?
+  city          String?
+  photo         String?
+  status        String   @default("pending") // pending | approved | rejected
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
+model UserReport {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reportedId  String
+  reason      String   // harassment | fake_profile | spam | inappropriate_photos | scam | other
+  description String?
+  status      String   @default("pending") // pending | reviewed | actioned | dismissed
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reporter User @relation("ReportsMade",     fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("ReportsReceived", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([reportedId])
+  @@unique([reporterId, reportedId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  // admin or user id
+  actorName  String?
+  action     String   // signup | login | upgrade | verify | ban | unban | delete | report | approve_story | reject_story
+  targetId   String?
+  targetName String?
+  meta       String?  // JSON string with extra context
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([actorId])
 }
 
 model ContactMessage {

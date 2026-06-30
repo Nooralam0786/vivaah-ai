@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Phone, Mail, ChevronRight, Shield, Heart, Star, Users } from 'lucide-react';
 
 const STEPS = ['Account', 'Verify', 'Password', 'Profile', 'Photos'];
@@ -18,8 +18,23 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Other'] as const;
 type Gender = (typeof GENDER_OPTIONS)[number];
 
 export default function SignupPage() {
-  const router = useRouter();
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
+  const router      = useRouter();
+  const searchParams = useSearchParams();
+  const [refCode, setRefCode] = useState('');
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', gender: '' as Gender | '' });
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) setRefCode(ref);
+  }, [searchParams]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +59,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/register-init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: form.fullName.trim(), phone: form.phone, email: form.email || undefined, gender: form.gender }),
+        body: JSON.stringify({ fullName: form.fullName.trim(), phone: form.phone, email: form.email || undefined, gender: form.gender, referralCode: refCode || undefined }),
       });
       const json = await res.json();
       if (!json.success) { setErrors({ form: json.error?.message || 'Something went wrong' }); return; }

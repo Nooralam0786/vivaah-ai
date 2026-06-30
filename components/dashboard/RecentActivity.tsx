@@ -65,7 +65,7 @@ export default function RecentActivity() {
         <h2 className="text-base font-bold text-neutral-900">Recent Activity</h2>
         <Link
           href="/connections"
-          className="text-xs font-semibold text-primary-700 hover:underline flex items-center gap-0.5"
+          className="text-xs font-semibold text-primary-700 hover:underline flex items-center gap-0.5 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-700/50 rounded"
         >
           View All <ChevronRight size={13} />
         </Link>
@@ -118,8 +118,8 @@ export default function RecentActivity() {
               </div>
 
               {/* Text */}
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-neutral-800 leading-tight">{a.title}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-neutral-800 leading-tight truncate">{a.title}</p>
                 <p className="text-xs text-neutral-500 mt-0.5 leading-snug line-clamp-2">{a.desc}</p>
                 <p className="text-[10px] text-neutral-400 mt-1">{timeAgo(a.time)}</p>
               </div>

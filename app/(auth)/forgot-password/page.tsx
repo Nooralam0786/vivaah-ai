@@ -126,15 +126,15 @@ export default function ForgotPasswordPage() {
   const current = stageConfig[stage];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-vivaah-bg p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-vivaah-bg p-3 sm:p-6">
+      <div className="w-full max-w-md mx-auto">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-6 sm:mb-8">
           <div className="w-8 h-8 bg-primary-gradient rounded-lg flex items-center justify-center text-white"><HeartIcon /></div>
           <span className="text-xl font-bold text-primary-700">VivaahAI</span>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-card p-8">
+        <div className="bg-white rounded-2xl shadow-card p-5 sm:p-8">
           {/* Stage indicator */}
           <div className="flex gap-1.5 mb-6">
             {['email', 'otp', 'reset'].map((s, i) => (
@@ -175,12 +175,13 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleOtpSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-3 text-center">Enter 6-digit OTP</label>
-                <div className="flex gap-2 justify-center">
+                <div className="grid grid-cols-6 gap-1.5 sm:gap-2 max-w-xs mx-auto">
                   {otp.map((digit, i) => (
-                    <input key={i} id={`otp-${i}`} type="text" maxLength={1} value={digit}
+                    <input key={i} id={`otp-${i}`} type="text" inputMode="numeric" maxLength={1} value={digit}
                       onChange={(e) => handleOtpInput(i, e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Backspace' && !digit && i > 0) { const prev = document.getElementById(`otp-${i - 1}`); (prev as HTMLInputElement)?.focus(); } }}
-                      className="w-12 h-14 text-center text-xl font-bold border border-vivaah-border rounded-xl outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700 bg-vivaah-bg" />
+                      aria-label={`OTP digit ${i + 1}`}
+                      className="aspect-square w-full text-center text-lg sm:text-xl font-bold border border-vivaah-border rounded-xl outline-none focus:ring-2 focus:ring-primary-700/20 focus:border-primary-700 bg-vivaah-bg" />
                   ))}
                 </div>
                 {devOtp && (

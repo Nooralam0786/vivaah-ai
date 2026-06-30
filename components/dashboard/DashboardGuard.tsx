@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardSidebar from '@/components/dashboard/Sidebar';
 import DashboardNavbar from '@/components/dashboard/Navbar';
+import { useFCM } from '@/hooks/useFCM';
+import { getAuthFromStorage } from '@/lib/auth';
 
 const ONBOARDING_ROUTES: Record<string, string> = {
   verify_otp: '/verify-otp',
@@ -16,6 +18,10 @@ const ONBOARDING_ROUTES: Record<string, string> = {
 export default function DashboardGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
+
+  // Register FCM push notification token once authenticated
+  const auth = getAuthFromStorage();
+  useFCM(auth?.accessToken ?? null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -30,7 +36,7 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
   /* Loading spinner */
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-vivaah-bg">
+      <div className="h-dvh flex items-center justify-center bg-vivaah-bg">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-primary-700/20 border-t-primary-700 rounded-full animate-spin" />
           <p className="text-sm text-neutral-500 font-medium">Loading...</p>
@@ -45,12 +51,13 @@ export default function DashboardGuard({ children }: { children: React.ReactNode
 
   /* Authenticated — render full dashboard shell */
   return (
-    <div className="h-screen bg-vivaah-bg flex overflow-hidden">
+    <div className="h-dvh bg-vivaah-bg flex overflow-hidden">
       <DashboardSidebar />
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 h-screen overflow-hidden">
+      {/* Right of sidebar: navbar + scrollable main */}
+      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 overflow-hidden">
         <DashboardNavbar />
-        <main className="flex-1 overflow-y-auto pt-14">
-          <div className="p-4 md:p-6 pb-8">
+        <main className="flex-1 overflow-y-auto overscroll-contain pt-14">
+          <div className="p-4 md:p-6 pb-10">
             {children}
           </div>
         </main>

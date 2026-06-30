@@ -288,3 +288,96 @@ export function calculateMatchScore(
     breakdown: { age, education, location, religion, interests, lifestyle, profileCompletion, activity, collaborativeBoost, total },
   };
 }
+
+// ─── Collaborative Filtering ──────────────────────────────────────────────────
+
+/**
+ * Computes a collaborative boost (0–5) for a candidate based on how many
+ * users who liked the current user also liked this candidate.
+ *
+ * likerIds     — IDs of users who liked the current user
+ * candidateLikerIds — IDs of users who liked the candidate
+ */
+export function collaborativeBoost(likerIds: string[], candidateLikerIds: string[]): number {
+  if (!likerIds.length || !candidateLikerIds.length) return 0;
+  const setA = new Set(likerIds);
+  let overlap = 0;
+  for (const id of candidateLikerIds) if (setA.has(id)) overlap++;
+  // Normalize: max 5 pts, 3+ mutual likers = full score
+  return Math.min(5, Math.round((overlap / Math.min(likerIds.length, 10)) * 5));
+}
+
+// ─── AI Explanation ───────────────────────────────────────────────────────────
+
+/** Returns human-readable reasons why two profiles matched well. */
+export function explainMatch(
+  user: CurrentUserContext,
+  candidate: CandidateProfile,
+  breakdown: ScoreBreakdown,
+): string[] {
+  const reasons: string[] = [];
+
+  // Religion
+  const uRel = norm(user.religion);
+  const cRel = norm(candidate.religion);
+  if (breakdown.religion >= 15 && uRel && cRel && uRel === cRel) {
+    reasons.push(`Same religion (${candidate.religion})`);
+  }
+
+  // Location
+  if (breakdown.location === 15) {
+    reasons.push(`Lives in the same city (${candidate.city})`);
+  } else if (breakdown.location === 10) {
+    reasons.push(`Same state (${candidate.state})`);
+  }
+
+  // Age
+  const uAge = calculateAge(user.dob);
+  const cAge = calculateAge(candidate.dob);
+  if (uAge && cAge && Math.abs(uAge - cAge) <= 3) {
+    reasons.push(`Compatible age (${cAge} years)`);
+  }
+
+  // Interests
+  if (breakdown.interests >= 10) {
+    const shared = user.interests.filter((i) =>
+      candidate.interests.some((ci) => ci.toLowerCase() === i.toLowerCase()),
+    );
+    if (shared.length > 0) {
+      reasons.push(`${shared.length} shared interest${shared.length > 1 ? 's' : ''}: ${shared.slice(0, 2).join(', ')}`);
+    }
+  }
+
+  // Education
+  if (breakdown.education >= 8) {
+    reasons.push(`Similar education level`);
+  }
+
+  // Lifestyle
+  if (breakdown.lifestyle >= 8) {
+    reasons.push(`Matching lifestyle preferences`);
+  } else {
+    const uDiet = norm(user.dietPreference);
+    const cDiet = norm(candidate.dietPreference);
+    if (uDiet && cDiet && uDiet === cDiet) {
+      reasons.push(`Same diet preference (${candidate.dietPreference})`);
+    }
+  }
+
+  // Verified badge
+  if (candidate.isVerified) {
+    reasons.push('Verified profile');
+  }
+
+  // Collaborative
+  if (breakdown.collaborativeBoost >= 3) {
+    reasons.push('Popular among similar profiles');
+  }
+
+  // Fallback
+  if (reasons.length === 0) {
+    reasons.push('Profile matches your basic preferences');
+  }
+
+  return reasons.slice(0, 4);
+}

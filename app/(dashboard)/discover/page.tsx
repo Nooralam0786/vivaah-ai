@@ -1,149 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal, X, Bookmark, Heart, Eye } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { getAuthFromStorage } from '@/lib/auth';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DiscoverProfile {
-  id: string;
-  userId: string;
-  name: string;
-  age: number | null;
-  profession: string | null;
-  location: string | null;
-  religion: string | null;
-  caste: string | null;
-  height: string | null;
-  income: string | null;
-  matchPercent: number;
-  isOnline: boolean;
-  isVerified: boolean;
-  photo: string | null;
-}
-
-interface Filters { religion: string; state: string; minAge: string; maxAge: string; }
-const DEFAULT_FILTERS: Filters = { religion: '', state: '', minAge: '', maxAge: '' };
-
-const RELIGIONS = ['Any', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Buddhist', 'Parsi', 'Other'];
-const STATES    = ['Any','Delhi','Maharashtra','Karnataka','Tamil Nadu','Uttar Pradesh','Gujarat','Rajasthan','West Bengal','Telangana','Kerala','Punjab','Haryana','Madhya Pradesh','Bihar'];
-const AGE_PRESETS = [{ label: '18–25', min: '18', max: '25' }, { label: '25–30', min: '25', max: '30' }, { label: '30–35', min: '30', max: '35' }, { label: '35–40', min: '35', max: '40' }, { label: '40+', min: '40', max: '' }];
-
-function scoreBg(pct: number) {
-  if (pct >= 90) return 'bg-emerald-500';
-  if (pct >= 80) return 'bg-blue-500';
-  if (pct >= 70) return 'bg-amber-500';
-  return 'bg-neutral-400';
-}
-
-// ─── Skeleton Card ────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card overflow-hidden animate-pulse">
-      <div className="aspect-[3/4] bg-neutral-200" />
-      <div className="p-3 space-y-2">
-        <div className="h-3.5 bg-neutral-200 rounded w-3/4" />
-        <div className="h-3 bg-neutral-100 rounded w-1/2" />
-        <div className="flex gap-1.5 mt-1">
-          <div className="h-7 bg-neutral-100 rounded-xl flex-1" />
-          <div className="h-7 bg-neutral-100 rounded-xl flex-1" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Profile Card ─────────────────────────────────────────────────────────────
-
-function ProfileCard({
-  profile,
-  isLiked,
-  isSaved,
-  onLike,
-  onSave,
-}: {
-  profile: DiscoverProfile;
-  isLiked: boolean;
-  isSaved: boolean;
-  onLike: () => void;
-  onSave: () => void;
-}) {
-  const [imgErr, setImgErr] = useState(false);
-
-  return (
-    <div className="bg-white rounded-2xl border border-vivaah-border shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden group flex flex-col">
-      {/* Photo */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-primary-100 to-primary-50 flex-shrink-0">
-        {profile.photo && !imgErr ? (
-          <img
-            src={profile.photo}
-            alt={profile.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImgErr(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl select-none">👤</div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-        {/* Match % */}
-        <div className={`absolute top-2.5 left-2.5 ${scoreBg(profile.matchPercent)} text-white text-[10px] font-bold px-2 py-0.5 rounded-full`}>
-          {profile.matchPercent}%
-        </div>
-
-        {/* Online dot */}
-        {profile.isOnline && (
-          <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white animate-pulse" />
-        )}
-
-        {/* Save bookmark */}
-        <button
-          onClick={onSave}
-          className={`absolute top-8 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-            isSaved ? 'bg-amber-400 text-white' : 'bg-black/40 text-white hover:bg-amber-400'
-          }`}
-        >
-          <Bookmark size={13} className={isSaved ? 'fill-white' : ''} />
-        </button>
-
-        {/* Name overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-3">
-          <div className="flex items-center gap-1">
-            <h3 className="text-white font-bold text-sm leading-tight truncate">
-              {profile.name}{profile.age ? `, ${profile.age}` : ''}
-            </h3>
-            {profile.isVerified && <span className="text-blue-300 text-xs flex-shrink-0">✓</span>}
-          </div>
-          {profile.profession && <p className="text-white/80 text-xs truncate">{profile.profession}</p>}
-          {profile.location && (
-            <p className="text-white/60 text-[10px] truncate">📍 {profile.location}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="p-3 flex gap-2">
-        <button
-          onClick={onLike}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
-            isLiked ? 'bg-primary-gradient text-white' : 'border border-primary-700 text-primary-700 hover:bg-primary-50'
-          }`}
-        >
-          <Heart size={12} className={isLiked ? 'fill-white' : ''} />
-          {isLiked ? 'Liked' : 'Like'}
-        </button>
-        <a
-          href={`/profile/${profile.userId}`}
-          className="flex-1 py-2 bg-primary-gradient text-white rounded-xl text-xs font-semibold hover:opacity-90 flex items-center justify-center gap-1"
-        >
-          <Eye size={12} /> View
-        </a>
-      </div>
-    </div>
-  );
-}
+import { DEFAULT_FILTERS } from './_components/constants';
+import type { DiscoverProfile, FreeLimit, Filters } from './_components/types';
+import FreeLimitBanner from './_components/FreeLimitBanner';
+import DiscoverFilterPanel from './_components/DiscoverFilterPanel';
+import ProfileGrid from './_components/ProfileGrid';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -159,6 +23,7 @@ export default function DiscoverPage() {
   const [liked, setLiked]         = useState<Set<string>>(new Set());
   const [saved, setSaved]         = useState<Set<string>>(new Set());
   const [error, setError]         = useState<string | null>(null);
+  const [freeLimit, setFreeLimit] = useState<FreeLimit | null>(null);
   const abortRef                  = useRef<AbortController | null>(null);
 
   const hasFilters = Object.values(filters).some(Boolean);
@@ -173,11 +38,11 @@ export default function DiscoverPage() {
 
     try {
       const params = new URLSearchParams({ page: String(pg), limit: '20' });
-      if (s)         params.set('search',   s);
-      if (f.religion)params.set('religion', f.religion);
-      if (f.state)   params.set('state',    f.state);
-      if (f.minAge)  params.set('minAge',   f.minAge);
-      if (f.maxAge)  params.set('maxAge',   f.maxAge);
+      if (s)          params.set('search',   s);
+      if (f.religion) params.set('religion', f.religion);
+      if (f.state)    params.set('state',    f.state);
+      if (f.minAge)   params.set('minAge',   f.minAge);
+      if (f.maxAge)   params.set('maxAge',   f.maxAge);
 
       const res  = await fetch(`/api/discover?${params}`, {
         headers: { Authorization: `Bearer ${auth.accessToken}` },
@@ -189,6 +54,7 @@ export default function DiscoverPage() {
       setProfiles(pg === 1 ? json.data.profiles : (prev: DiscoverProfile[]) => [...prev, ...json.data.profiles]);
       setTotal(json.data.total);
       setTotalPages(json.data.totalPages ?? 1);
+      if (json.data.freeLimit) setFreeLimit(json.data.freeLimit);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Failed to load profiles');
@@ -207,7 +73,7 @@ export default function DiscoverPage() {
     return () => clearTimeout(t);
   }, [search, filters, fetchProfiles]);
 
-  const handleLike = async (profile: DiscoverProfile) => {
+  const handleLike = useCallback(async (profile: DiscoverProfile) => {
     setLiked((prev) => { const s = new Set(prev); s.has(profile.id) ? s.delete(profile.id) : s.add(profile.id); return s; });
     if (liked.has(profile.id)) return;
     const auth = getAuthFromStorage();
@@ -219,9 +85,9 @@ export default function DiscoverPage() {
         body: JSON.stringify({ targetUserId: profile.userId }),
       });
     } catch { /* non-fatal */ }
-  };
+  }, [liked]);
 
-  const handleSave = async (profile: DiscoverProfile) => {
+  const handleSave = useCallback(async (profile: DiscoverProfile) => {
     setSaved((prev) => { const s = new Set(prev); s.has(profile.id) ? s.delete(profile.id) : s.add(profile.id); return s; });
     const auth = getAuthFromStorage();
     if (!auth) return;
@@ -232,34 +98,41 @@ export default function DiscoverPage() {
         body: JSON.stringify({ targetUserId: profile.userId }),
       });
     } catch { /* non-fatal */ }
-  };
+  }, []);
 
   const resetFilters = () => { setFilters(DEFAULT_FILTERS); setFiltersOpen(false); };
+  const isAtLimit    = freeLimit?.isLimited === true && profiles.length === 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900">Discover Profiles</h1>
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-neutral-900 truncate">Discover Profiles</h1>
           <p className="text-sm text-neutral-500 mt-0.5">
             {total > 0 ? `${total} profiles found` : 'Browse all members'}
           </p>
         </div>
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+          aria-expanded={filtersOpen}
+          className={`flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-sm font-semibold transition-colors ${
             hasFilters || filtersOpen
               ? 'border-primary-700 text-primary-700 bg-primary-50'
               : 'border-vivaah-border text-neutral-600 hover:border-primary-700/40 bg-white'
           }`}
         >
-          <SlidersHorizontal size={15} />
+          <SlidersHorizontal size={15} aria-hidden="true" />
           Filters
-          {hasFilters && <span className="w-2 h-2 bg-primary-700 rounded-full" />}
+          {hasFilters && <span className="w-2 h-2 bg-primary-700 rounded-full" aria-label="Filters active" />}
         </button>
       </div>
+
+      {/* Free limit banner (only for free users) */}
+      {freeLimit && !isAtLimit && (
+        <FreeLimitBanner freeLimit={freeLimit} />
+      )}
 
       {/* Search bar */}
       <div className="relative">
@@ -280,77 +153,12 @@ export default function DiscoverPage() {
 
       {/* Filter panel */}
       {filtersOpen && (
-        <div className="bg-white rounded-2xl border border-vivaah-border shadow-card p-5 space-y-4">
-          {/* Religion */}
-          <div>
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Religion</p>
-            <div className="flex flex-wrap gap-2">
-              {RELIGIONS.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setFilters((f) => ({ ...f, religion: r === 'Any' ? '' : r }))}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    (filters.religion === r || (!filters.religion && r === 'Any'))
-                      ? 'bg-primary-gradient text-white shadow-sm'
-                      : 'border border-vivaah-border text-neutral-600 hover:border-primary-700/50 bg-white'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Age */}
-          <div>
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Age Range</p>
-            <div className="flex flex-wrap gap-2">
-              {AGE_PRESETS.map((a) => {
-                const active = filters.minAge === a.min && filters.maxAge === a.max;
-                return (
-                  <button
-                    key={a.label}
-                    onClick={() => setFilters((f) => active ? { ...f, minAge: '', maxAge: '' } : { ...f, minAge: a.min, maxAge: a.max })}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      active ? 'bg-primary-gradient text-white shadow-sm' : 'border border-vivaah-border text-neutral-600 hover:border-primary-700/50 bg-white'
-                    }`}
-                  >
-                    {a.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* State */}
-          <div>
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">State</p>
-            <div className="flex flex-wrap gap-2">
-              {STATES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setFilters((f) => ({ ...f, state: s === 'Any' ? '' : s }))}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    (filters.state === s || (!filters.state && s === 'Any'))
-                      ? 'bg-primary-gradient text-white shadow-sm'
-                      : 'border border-vivaah-border text-neutral-600 hover:border-primary-700/50 bg-white'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2 border-t border-vivaah-border">
-            <button onClick={resetFilters} className="px-4 py-2 border border-vivaah-border rounded-xl text-sm text-neutral-600 hover:bg-vivaah-bg transition-colors">
-              Reset All
-            </button>
-            <button onClick={() => setFiltersOpen(false)} className="px-6 py-2 bg-primary-gradient text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-              Apply
-            </button>
-          </div>
-        </div>
+        <DiscoverFilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          onReset={resetFilters}
+          onApply={() => setFiltersOpen(false)}
+        />
       )}
 
       {/* Error */}
@@ -362,53 +170,23 @@ export default function DiscoverPage() {
 
       {/* Grid */}
       {!error && (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {profiles.map((p) => (
-              <ProfileCard
-                key={p.id}
-                profile={p}
-                isLiked={liked.has(p.id)}
-                isSaved={saved.has(p.id)}
-                onLike={() => handleLike(p)}
-                onSave={() => handleSave(p)}
-              />
-            ))}
-            {loading && Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
-          </div>
-
-          {/* Empty state */}
-          {!loading && profiles.length === 0 && (
-            <div className="text-center py-20">
-              <div className="text-5xl mb-3">🔍</div>
-              <p className="font-medium text-neutral-600">No profiles found</p>
-              <p className="text-sm text-neutral-400 mt-1">Try adjusting your search or filters</p>
-              {(search || hasFilters) && (
-                <button onClick={() => { setSearch(''); resetFilters(); }} className="mt-3 text-sm text-primary-700 font-semibold hover:underline">
-                  Clear all filters
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Load more */}
-          {!loading && page < totalPages && (
-            <div className="text-center">
-              <button
-                onClick={() => { const next = page + 1; setPage(next); fetchProfiles(next, search, filters); }}
-                className="px-6 py-3 border border-primary-700 text-primary-700 font-semibold rounded-xl hover:bg-primary-50 transition-colors"
-              >
-                Load more profiles
-              </button>
-            </div>
-          )}
-
-          {!loading && profiles.length > 0 && (
-            <p className="text-center text-xs text-neutral-400">
-              Showing {profiles.length} of {total} profiles
-            </p>
-          )}
-        </>
+        <ProfileGrid
+          profiles={profiles}
+          loading={loading}
+          liked={liked}
+          saved={saved}
+          onLike={handleLike}
+          onSave={handleSave}
+          freeLimit={freeLimit}
+          isAtLimit={isAtLimit}
+          search={search}
+          hasFilters={hasFilters}
+          onClearAll={() => { setSearch(''); resetFilters(); }}
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onLoadMore={() => { const next = page + 1; setPage(next); fetchProfiles(next, search, filters); }}
+        />
       )}
     </div>
   );

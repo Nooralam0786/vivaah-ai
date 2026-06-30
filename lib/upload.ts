@@ -1,6 +1,7 @@
 /**
  * Client-side photo upload utility.
  * Resizes images in the browser, then uploads to S3 via presigned URL.
+ * Falls back to /api/upload/local when S3 is not configured (dev mode).
  */
 
 export function resizeImageToBlob(
@@ -35,8 +36,8 @@ export function resizeImageToBlob(
 }
 
 /**
- * Resizes `file`, uploads to S3 via presigned URL, and returns the public URL.
- * Throws with a human-readable message on any failure.
+ * Resizes `file`, uploads via S3 presigned URL (production) or
+ * /api/upload/local (dev — when S3 is not configured), and returns the public URL.
  */
 export async function uploadPhotoToS3(
   file: File,
@@ -45,28 +46,43 @@ export async function uploadPhotoToS3(
 ): Promise<string> {
   const blob = await resizeImageToBlob(file, maxDimension);
 
+  // ── Try S3 presigned upload ──────────────────────────────────────────────
   const presignRes = await fetch('/api/upload/presign', {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ contentType: 'image/jpeg' }),
+    body:    JSON.stringify({ contentType: 'image/jpeg' }),
   });
 
-  if (!presignRes.ok) {
-    const json = await presignRes.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(json?.error?.message ?? 'Failed to get upload URL');
+  if (presignRes.ok) {
+    const { data: { uploadUrl, publicUrl } } = await presignRes.json() as {
+      data: { uploadUrl: string; publicUrl: string; key: string };
+    };
+    const s3Res = await fetch(uploadUrl, {
+      method:  'PUT',
+      body:    blob,
+      headers: { 'Content-Type': 'image/jpeg' },
+    });
+    if (!s3Res.ok) throw new Error('Failed to upload image to cloud storage');
+    return publicUrl;
   }
 
-  const { data: { uploadUrl, publicUrl } } = await presignRes.json() as {
-    data: { uploadUrl: string; publicUrl: string; key: string };
-  };
+  // ── Local fallback (dev mode — S3 not configured) ────────────────────────
+  const form = new FormData();
+  form.append('file', blob, 'photo.jpg');
 
-  const s3Res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: blob,
-    headers: { 'Content-Type': 'image/jpeg' },
+  const localRes = await fetch('/api/upload/local', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body:    form,
   });
 
-  if (!s3Res.ok) throw new Error('Failed to upload image to cloud storage');
+  if (!localRes.ok) {
+    const json = await localRes.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(json?.error?.message ?? 'Failed to upload photo');
+  }
 
+  const { data: { publicUrl } } = await localRes.json() as {
+    data: { publicUrl: string };
+  };
   return publicUrl;
 }

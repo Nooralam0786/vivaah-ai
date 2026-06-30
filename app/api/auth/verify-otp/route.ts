@@ -7,8 +7,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
 import { verifyOTPSchema } from '@/lib/validation';
+import { loginLimit, getIP } from '@/lib/api-rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = await loginLimit(req, `verify-otp:${getIP(req)}`);
+  if (limited) return limited;
+
   try {
     const userId = getUserIdFromRequest(req);
     if (!userId) {

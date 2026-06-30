@@ -7,7 +7,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import { parse } from 'url';
 import next from 'next';
 import { initSocketServer } from './lib/socket-server';
-import { checkRateLimit, type RateLimitConfig } from './lib/rate-limit';
+import { checkRateLimitSync, type RateLimitConfig } from './lib/rate-limit';
 
 const dev  = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT || '3000', 10);
@@ -63,7 +63,7 @@ app.prepare().then(() => {
     if (rule) {
       const ip     = getClientIp(req);
       const key    = `${ip}:${pathname}`;
-      const result = checkRateLimit(key, rule.config);
+      const result = checkRateLimitSync(key, rule.config);
 
       res.setHeader('X-RateLimit-Limit',     String(rule.config.max));
       res.setHeader('X-RateLimit-Remaining', String(result.remaining));

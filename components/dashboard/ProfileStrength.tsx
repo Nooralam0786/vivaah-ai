@@ -130,7 +130,7 @@ export default function ProfileStrength() {
       <h2 className="text-sm font-bold text-neutral-900 mb-3">Profile Strength</h2>
 
       {/* Donut + text */}
-      <div className="flex items-start gap-3 mb-4">
+      <div className="flex items-start gap-3 mb-4 min-w-0">
         <div className="relative flex-shrink-0" style={{ width: 90, height: 90 }}>
           <DonutChart value={strength} size={90} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -160,7 +160,7 @@ export default function ProfileStrength() {
       {/* Checklist */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-4">
         {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-1.5">
+          <div key={item.label} className="flex items-center gap-1.5 min-w-0">
             {item.done ? (
               <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                 <Check size={9} className="text-green-600" strokeWidth={3} />
@@ -168,7 +168,7 @@ export default function ProfileStrength() {
             ) : (
               <span className="w-4 h-4 rounded-full border border-neutral-300 flex-shrink-0" />
             )}
-            <span className={`text-[11px] leading-tight ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>
+            <span className={`text-[11px] leading-tight truncate min-w-0 ${item.done ? 'text-neutral-700' : 'text-neutral-400'}`}>
               {item.label}
             </span>
           </div>

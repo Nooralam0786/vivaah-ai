@@ -167,10 +167,11 @@ export type SubscriptionFormData = z.infer<typeof subscriptionSchema>;
 // ============================================
 
 export const messageSchema = z.object({
+  // Max is large to accommodate E2E-encrypted payloads (ciphertext ~2x plaintext size)
   content: z
     .string()
     .min(1, 'Message cannot be empty')
-    .max(5000, 'Message is too long'),
+    .max(50000, 'Message is too long'),
   toUserId: z.string().min(1, 'Invalid user ID'),
 });
 

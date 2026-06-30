@@ -1,11 +1,11 @@
 /**
- * GET /api/chat/conversations — list the signed-in user's conversations,
- * each with the other participant's profile and the latest message.
+ * GET /api/chat/conversations — list conversations with real unread counts.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/jwt';
+import { isE2EEncrypted } from '@/lib/encryption';
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,25 +24,40 @@ export async function GET(req: NextRequest) {
         userB: { include: { profile: true } },
         messages: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const data = conversations
-      .map((c) => {
-        const other = c.userAId === userId ? c.userB : c.userA;
-        const last = c.messages[0];
-        return {
-          id:       c.id,
-          userId:   other.id,
-          name:     other.fullName,
-          photo:    other.profile?.photo ?? null,
-          isOnline: other.profile?.isOnline ?? false,
-          lastMsg:  last?.text ?? '',
-          time:     (last?.createdAt ?? c.createdAt).toISOString(),
-          unread:   0,
-        };
+    /* Compute unread counts in one batch query */
+    const unreadCounts = await Promise.all(
+      conversations.map((c) => {
+        const isA       = c.userAId === userId;
+        const lastRead  = isA ? c.userALastReadAt : c.userBLastReadAt;
+        const otherId   = isA ? c.userBId : c.userAId;
+
+        return prisma.message.count({
+          where: {
+            conversationId: c.id,
+            senderId:       otherId,
+            ...(lastRead ? { createdAt: { gt: lastRead } } : {}),
+          },
+        });
       })
-      // Sort by latest message first
-      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    );
+
+    const data = conversations.map((c, i) => {
+      const other = c.userAId === userId ? c.userB : c.userA;
+      const last  = c.messages[0];
+      return {
+        id:       c.id,
+        userId:   other.id,
+        name:     other.fullName,
+        photo:    other.profile?.photo ?? null,
+        isOnline: other.profile?.isOnline ?? false,
+        lastMsg:  last ? (isE2EEncrypted(last.text) ? '🔒 Encrypted message' : last.text) : '',
+        time:     (last?.createdAt ?? c.createdAt).toISOString(),
+        unread:   unreadCounts[i],
+      };
+    }).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
     return NextResponse.json({
       success: true,

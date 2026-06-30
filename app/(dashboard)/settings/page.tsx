@@ -17,12 +17,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 function SettingRow({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-vivaah-border last:border-0">
-      <div className="pr-4">
+    <div className="flex items-center justify-between gap-3 py-4 border-b border-vivaah-border last:border-0">
+      <div className="pr-2 min-w-0">
         <p className="text-sm font-medium text-neutral-900">{label}</p>
         {desc && <p className="text-xs text-neutral-400 mt-0.5">{desc}</p>}
       </div>
-      {children}
+      <div className="flex-shrink-0">{children}</div>
     </div>
   );
 }
@@ -64,7 +64,7 @@ export default function SettingsPage() {
         <p className="text-sm text-neutral-500 mt-0.5">Manage your account settings and preferences</p>
       </div>
 
-      <div className="flex gap-5">
+      <div className="flex flex-col sm:flex-row gap-5">
         {/* Sidebar Tabs */}
         <div className="hidden sm:flex w-48 flex-col gap-1 flex-shrink-0">
           {TABS.map((tab) => (
@@ -187,15 +187,15 @@ export default function SettingsPage() {
                   { title: 'Active Sessions', desc: 'Manage devices where you are logged in', icon: '📱', action: 'View Sessions' },
                   { title: 'Download My Data', desc: 'Get a copy of all your personal data', icon: '⬇️', action: 'Request Download' },
                 ].map((item) => (
-                  <div key={item.title} className="flex items-center justify-between p-4 border border-vivaah-border rounded-xl hover:bg-vivaah-bg transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-xl">{item.icon}</div>
-                      <div>
+                  <div key={item.title} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-vivaah-border rounded-xl hover:bg-vivaah-bg transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">{item.icon}</div>
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
                         <p className="text-xs text-neutral-400">{item.desc}</p>
                       </div>
                     </div>
-                    <button className="px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-lg text-xs font-medium hover:border-primary-700/40 hover:text-primary-700 transition-colors">
+                    <button className="px-3 py-1.5 border border-vivaah-border text-neutral-600 rounded-lg text-xs font-medium hover:border-primary-700/40 hover:text-primary-700 transition-colors w-full sm:w-auto flex-shrink-0">
                       {item.action}
                     </button>
                   </div>
